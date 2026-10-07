@@ -1,13 +1,15 @@
 name: Release
 
-# Push a tag like `v1.0.0` to publish. Requires an `NPM_TOKEN` repository secret.
+# Push a tag like `v1.0.0` to publish to npm.
+# Uses npm Trusted Publishing (OIDC): no npm token is stored anywhere. npm only accepts
+# publishes from this repository's `release.yml` workflow, as configured on npmjs.com.
 on:
   push:
     tags: ['v*']
 
 permissions:
   contents: read
-  id-token: write # npm provenance
+  id-token: write # OIDC for npm trusted publishing + provenance
 
 jobs:
   publish:
@@ -17,14 +19,15 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.1.
+      - run: npm install -g npm@latest && npm --version
       - run: pnpm install --frozen-lockfile
       - name: Verify tag matches package version
         run: |
           VERSION=$(node -p "require('./packages/wyllet/package.json').version")
           [ "v$VERSION" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME does not match package version v$VERSION"; exit 1; }
-      - run: pnpm --filter wyllet publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # prepublishOnly re-runs typecheck, tests and build before anything is uploaded.
+      - run: npm publish --access public
+        working-directory: packages/wyllet
