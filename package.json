@@ -1,0 +1,12 @@
+{
+  "name": "wyllet-monorepo",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@8.11.0",
+  "scripts": {
+    "build": "pnpm --filter wyllet build",
+    "dev": "pnpm --filter playground dev",
+    "test": "pnpm --filter wyllet test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

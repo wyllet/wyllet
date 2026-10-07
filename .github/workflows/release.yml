@@ -1,0 +1,30 @@
+name: Release
+
+# Push a tag like `v1.0.0` to publish. Requires an `NPM_TOKEN` repository secret.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Verify tag matches package version
+        run: |
+          VERSION=$(node -p "require('./packages/wyllet/package.json').version")
+          [ "v$VERSION" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME does not match package version v$VERSION"; exit 1; }
+      - run: pnpm --filter wyllet publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
