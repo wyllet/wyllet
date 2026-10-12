@@ -1,0 +1,14 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://wyllet.dev/docs
+    about: Guides, API reference and examples.
+  - name: Report a security vulnerability
+    url: https://github.com/wyllet/wyllet/security/advisories/new
+    about: Please report security problems privately, not as a public issue.
+  - name: Email support
+    url: mailto:support@wyllet.dev
+    about: Questions that don't fit an issue.
+  - name: Follow @wylletdev on X
+    url: https://x.com/wylletdev
+    about: Release news and updates.
