@@ -4,6 +4,8 @@
 
 **The connect layer for serious dApps.** Open source and MIT-licensed, built on wagmi v3 + viem.
 
+[Website](https://wyllet.dev) · [Docs](https://wyllet.dev/docs) · [Playground](https://wyllet.dev/playground) · [X @wylletdev](https://x.com/wylletdev) · [support@wyllet.dev](mailto:support@wyllet.dev)
+
 ```bash
 pnpm add wyllet wagmi viem @tanstack/react-query
 
@@ -21,7 +23,7 @@ Wyllet replaces the usual "connect modal + account dropdown" with a single syste
 | --- | --- |
 | **Wallet Island** | One morphing button: a call to action when disconnected; identity, network badge, balance and a live status dot when connected |
 | **Panel presentations** | `drawer` (floating side panel, the default), `popover` (anchored to the button), or `modal`. Draggable bottom sheet on phones |
-| **Keyboard-first connect** | `⌘K` to open, `↑ ↓ Enter`, number keys `1–9` to pick a wallet, one-tap **Continue with {last wallet}** |
+| **Keyboard-first connect** | Optional `⌘K` shortcut (`shortcut="mod+k"`), `↑ ↓ Enter`, number keys `1–9` to pick a wallet, one-tap **Continue with {last wallet}** |
 | **Identity card (optional)** | `identityCard: true` swaps the compact account summary for a generative holographic card unique to every address, with 3D tilt |
 | **Chains & tokens in code** | `popularChains` presets, `customChain()` for any EVM chain, your own token lists (`pinned`, `chainOrder`, `tokenSort`), built-in token and chain icons |
 | **Activity timeline** | Transactions (live pending → confirmed), connects, network switches, sign-ins and your own entries |
@@ -111,8 +113,10 @@ Preset knobs: `accentColor`, `accentColorForeground`, `accentSecondary` (used in
 Every token is a CSS variable, such as `--wy-colors-accent` or `--wy-radii-panel`. You can also add classes per element:
 
 ```tsx
-<WylletProvider classNames={{ panel: 'ring-1 ring-white/10', island: 'font-mono', walletRow: 'hover:translate-x-1' }} />
+<WylletProvider classNames={{ panel: 'ring-1 ring-white/10', walletRow: 'hover:translate-x-1' }} />
 ```
+
+Wyllet's own rules are unlayered, so a utility that sets a property Wyllet already sets (such as `font-family` on the button) needs Tailwind's `!` modifier, or a theme token instead.
 
 Slots: `overlay`, `panel`, `island`, `walletRow`, `primaryButton`, `identityCard`, `toast`.
 
@@ -123,6 +127,12 @@ Slots: `overlay`, `panel`, `island`, `walletRow`, `primaryButton`, `identityCard
 ```tsx
 <WylletButton size="lg" display="compact" label="Enter app" />
 // display: 'full' (avatar + name + balance) | 'compact' | 'avatar'
+```
+
+### Embedded
+
+```tsx
+<WylletEmbed />  // the real panel inline, e.g. a connect card on a sign-in page
 ```
 
 ### Headless
@@ -214,7 +224,7 @@ getDefaultConfig({
 })
 ```
 
-- `popularChains`: Ethereum, Base, OP, Arbitrum, Polygon, BNB, Avalanche, zkSync, Linea, Scroll (all with built-in icons)
+- `popularChains`: Ethereum, Base, OP, Arbitrum, Polygon, BNB, Avalanche, zkSync, Linea, Scroll (built-in official icons for all except BNB, which shows a monogram; pass your own with `chainIcons`)
 - `popularTestnets`: Sepolia, Base Sepolia, OP Sepolia, Arbitrum Sepolia, Polygon Amoy
 - Wallets that don't know your chain get an "add network" prompt automatically on first switch.
 
@@ -245,12 +255,12 @@ const tokens = withDefaultTokens([
 | `tokens={false}` | Native balance only |
 
 **Priority:** list order is the display order, and `pinned: true` keeps a token at the top. `appearance.tokenSort` decides the rest:
-`'balance'` (default) puts pinned tokens first, then held tokens, then the rest, each group in your list order. `'list'` keeps exactly your order.
+`'balance'` (default) puts pinned tokens first, then held tokens, then the rest, each group in your list order. `'list'` puts pinned tokens first, then keeps exactly your list order.
 
 **Optional:** `allowTokenImport` lets each user add extra ERC-20s by pasting a contract address. Wyllet reads the name, symbol and decimals onchain, saves them per browser, and users can remove them later. Every listed ERC-20 also gets an "Add to wallet" button.
 
 ```tsx
-const { tokens, importToken, removeToken } = useWylletTokens() // current chain, merged & ordered
+const { tokens, importToken, removeToken, canImport } = useWylletTokens() // connected chain (or pass a chainId): your list, then user imports
 const { chains } = useWylletChains()                            // ordered by chainOrder
 
 <TokenIcon symbol="USDC" chainId={8453} size={28} />
@@ -283,7 +293,7 @@ How a wallet connects when picked:
 1. If its extension is installed (EIP-6963 `rdns` match), Wyllet connects directly.
 2. If it has a dedicated connector, Wyllet connects directly.
 3. If it supports WalletConnect, Wyllet shows a QR code on desktop or a deep link on mobile.
-4. Otherwise, Wyllet shows a "Get {wallet}" screen with install links.
+4. Otherwise, Wyllet shows a "Get {wallet}" screen with install links (wallets with no way to connect and no download links are left out).
 
 Installed wallets you didn't list still appear under **Detected**.
 
@@ -313,7 +323,7 @@ import { coinbaseWallet as coinbaseSdk } from 'wagmi/connectors'
 coinbaseWallet({ connector: () => coinbaseSdk({ appName: 'My dApp' }) })
 ```
 
-Using your own `createConfig`? Pass `wallets` and `appInfo` to `<WylletProvider>`, and include `walletConnect({ showQrModal: false, … })` for QR support.
+Using your own `createConfig`? Pass `wallets` and `appInfo` to `<WylletProvider>`, include `walletConnect({ showQrModal: false, … })` for QR support, and add `burner()` to your connectors if you use `burnerWallet()`.
 
 ---
 
@@ -336,12 +346,13 @@ Every key is in the exported `en` object.
 | `shortcut` | e.g. `'mod+k'`, toggles the panel |
 | `tokens` | `'default' \| false \| TokenList \| TokenEntry[]`, shown to everyone |
 | `chainOrder` | Chain ids shown first in the Networks tab |
+| `walletConnectProjectId` | For hand-written wagmi configs (taken from `getDefaultConfig` otherwise) |
 | `allowTokenImport` | Let users import their own tokens (default `false`) |
 | `auth` | SIWE adapter |
 | `wallets`, `appInfo` | Override what `getDefaultConfig` registered |
-| `messages`, `classNames`, `chainIcons`, `avatar`, `disclaimer` | Copy and visuals |
+| `messages`, `classNames`, `chainIcons`, `avatar`, `disclaimer` | Copy and visuals. The terms notice shows when `appInfo` has both `termsUrl` and `privacyUrl` |
 | `ens` | Resolve ENS names and avatars (default `true`; needs mainnet) |
-| `injectStyles` | `false` to load `wyllet/styles.css` yourself (strict CSP) |
+| `injectStyles` | `false` to load `wyllet/styles.css` yourself. The theme variables are still rendered in an inline `<style>`, so `style-src` needs `'unsafe-inline'` |
 | `onConnect` / `onDisconnect` | Lifecycle callbacks |
 
 ---
@@ -351,6 +362,7 @@ Every key is in the exported `en` object.
 ```bash
 pnpm install
 pnpm dev        # playground at http://localhost:5173 (hot-reloads library source)
+pnpm dev:site   # website at http://localhost:4321 (docs, blog, playground)
 pnpm test       # vitest
 pnpm build      # packages/wyllet → dist (ESM + CJS + types + styles.css)
 pnpm typecheck
