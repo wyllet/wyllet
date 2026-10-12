@@ -33,4 +33,9 @@ describe('server rendering', () => {
     expect(html).toContain('wy-island')
     expect(html).not.toContain('secret') // gated content never leaks into server HTML
   })
+
+  it('skips the WalletConnect connector on the server (its SDK needs IndexedDB)', () => {
+    const config = getDefaultConfig({ appName: 'SSR', chains: [mainnet], walletConnectProjectId: 'test' })
+    expect(config.connectors.some((c) => c.type === 'walletConnect')).toBe(false)
+  })
 })
