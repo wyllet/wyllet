@@ -1,11 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
 
 - **New: `<WylletEmbed>`** renders the real panel inline, inside your own layout (a connect card, an account sidebar, a live preview), with local navigation that never opens the drawer.
 - **Fix:** `getDefaultConfig` no longer creates the WalletConnect connector during server rendering, which logged an `indexedDB is not defined` error in Next.js and other SSR frameworks.
 - **Accessibility:** the tertiary text colour of every preset (hints, subtitles, labels) now meets WCAG AA contrast.
 - **Touch devices:** keyboard hints (the `⌘K` badge on the button and the number keys next to wallets) are hidden on touch-only screens.
+- **Package:** `CHANGELOG.md` now ships in the npm package.
 
 ## 1.0.0
 
