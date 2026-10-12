@@ -368,6 +368,7 @@ export const css = /* css */ `
   background:linear-gradient(90deg,transparent,var(--wy-colors-surface) 16px)}
 .wy-token-row:hover .wy-row-tools,.wy-row-tools:focus-within{opacity:1;pointer-events:auto}
 @media (hover:none){.wy-row-tools{position:static;transform:none;opacity:1;pointer-events:auto;background:none;padding-left:0}}
+@media (hover:none) and (pointer:coarse){.wy-island-kbd,.wy-kbd{display:none}}
 .wy-embed{display:block;width:100%;max-width:420px}
 .wy-embed .wy-surface{position:relative;width:100%;animation:none}
 .wy-embed-fill{height:100%}
