@@ -12,7 +12,7 @@
 - New wallets go in `wallets/presets.ts` with an `rdns`, `downloadUrls` and, if supported, a WalletConnect `mobileUri`.
 ## Dependency policy (supply-chain safety)
 
-Wyllet has **zero third-party runtime dependencies**, and it should stay that way.
+Wyllet has **zero direct runtime dependencies**, and it should stay that way.
 
 - Runtime code may only import its peers: `react`, `react-dom`, `wagmi`, `viem`, `@tanstack/react-query`, plus the optional `@walletconnect/ethereum-provider`. `test/policy.test.ts` checks `package.json` and scans the built bundle, so a new runtime import fails CI.
 - Need something small? Write it, like `src/qr/encode.ts` (QR encoder, checked against the reference implementation in `test/qr.test.ts`).
