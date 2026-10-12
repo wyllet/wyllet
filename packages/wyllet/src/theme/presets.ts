@@ -64,7 +64,7 @@ const obsidian: Theme = {
     border: 'rgba(255, 255, 255, 0.075)',
     text: '#F2F2F5',
     textSecondary: '#9C9CAC',
-    textTertiary: '#5E5E6E',
+    textTertiary: '#858594', // WCAG AA (4.5:1) on background, surface and hover rows
     overlay: 'rgba(4, 4, 8, 0.42)',
     success: '#4ADE80',
     danger: '#FF5A5F',
@@ -95,8 +95,8 @@ const porcelain: Theme = {
     surfaceActive: '#E3E3DF',
     border: 'rgba(17, 17, 20, 0.08)',
     text: '#111114',
-    textSecondary: '#62626B',
-    textTertiary: '#A0A0A8',
+    textSecondary: '#52525B',
+    textTertiary: '#6A6A73', // WCAG AA (4.5:1) on background, surface and hover rows
     overlay: 'rgba(240, 240, 236, 0.5)',
     success: '#16A34A',
     danger: '#DC2626',
@@ -145,7 +145,7 @@ const terminal: Theme = mergeDeep(obsidian, {
     border: 'rgba(61, 255, 143, 0.16)',
     text: '#D7FFE5',
     textSecondary: '#7FB894',
-    textTertiary: '#3F6B4F',
+    textTertiary: '#5C9470', // WCAG AA (4.5:1) on background, surface and hover rows
     islandBackground: '#050705',
     islandText: '#D7FFE5',
   },
