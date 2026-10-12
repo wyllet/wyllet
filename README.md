@@ -13,7 +13,7 @@ pnpm add wyllet wagmi viem @tanstack/react-query
 pnpm add @walletconnect/ethereum-provider
 ```
 
-**Zero third-party runtime dependencies.** Wyllet only uses the libraries your dApp already has (react, wagmi, viem, react-query), as peer dependencies. Even the QR code encoder is built in. WalletConnect is opt-in, so you choose and pin its version. A test in CI fails if anything else ever sneaks into the bundle.
+**Zero direct runtime dependencies.** Wyllet only uses the libraries your dApp already has (react, wagmi, viem, react-query), as peer dependencies. Even the QR code encoder is built in. WalletConnect is opt-in, so you choose and pin its version. A test in CI fails if anything else ever sneaks into the bundle.
 
 **Network requests:** Wyllet makes none of its own, with one opt-in exception. When WalletConnect is enabled and a user opens **All wallets**, it loads the wallet list and logos from WalletConnect's registry (`explorer-api.walletconnect.com`), the same service your WalletConnect connections already use. Turn it off with `appearance: { walletDirectory: false }`.
 
