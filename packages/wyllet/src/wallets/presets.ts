@@ -71,7 +71,7 @@ export const walletConnectWallet = preset({
   // Bare `wc:` URIs open the OS app picker on phones.
   walletConnect: { mobileUri: (uri) => uri },
   downloadUrls: { website: 'https://walletconnect.network' },
-  description: 'Connect any of 500+ mobile wallets by scanning a QR code.',
+  description: 'Connect hundreds of mobile wallets by scanning a QR code.',
 })
 
 /** Not in `defaultWallets()` — no official icon is bundled. Pass one via `overrides: { icon }`. */
