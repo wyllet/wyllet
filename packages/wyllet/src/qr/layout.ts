@@ -3,8 +3,8 @@ import { encodeQR } from './encode'
 /**
  * Visual geometry for Wyllet's styled QR codes, in module units.
  * Tuned for scannability, not just looks: full-size modules with softly rounded corners and a
- * 2-module quiet zone scan reliably at 240px on 1× screens. (Round dots looked nicer but failed
- * ~30% of addresses at that size.) Guarded by `test/qr-scan.test.ts`, which rasterizes this
+ * 2-module quiet zone scan reliably at 240px on 1× screens. (Small round dots looked nicer, but at that
+ * size they decoded in as few as 1 of 40 test codes.) Guarded by `test/qr-scan.test.ts`, which rasterizes this
  * exact geometry and decodes it.
  */
 export const MODULE_RADIUS = 0.3
