@@ -1,0 +1,156 @@
+Today we're releasing Wyllet 1.0, an open-source wallet connector for React dApps. It's built on wagmi v3, viem 2 and TanStack Query, it's MIT-licensed, and it's on npm as `wyllet`.
+
+```bash
+npm install wyllet wagmi viem @tanstack/react-query
+```
+
+## Why we built it
+
+Every dApp needs a connect button, and for most teams it's the first thing users see. We wanted a connect layer with three properties.
+
+**It should look like your app.** The connect flow is part of your product, so every visual value in Wyllet is a theme token exposed as a CSS variable, and individual elements accept your own class names. The four built-in themes are starting points, not a fixed look.
+
+**It should do more than connect.** After connecting, users want to see their balances, switch networks, follow a transaction they just sent and sign in. Those are usually separate pieces of UI that each dApp rebuilds. Wyllet ships them as one system around a single button.
+
+**It shouldn't pull in a dependency tree.** A wallet connector runs on the same page as your users' wallets. Wyllet has no third-party runtime dependencies. It imports only the libraries your dApp already has, as peers. We wrote about why and how in [How we shipped a wallet connector with zero runtime dependencies](/blog/zero-runtime-dependencies).
+
+## What's in 1.0
+
+### One button, one panel
+
+The **Wallet Island** is a single control that changes with state. Disconnected, it's a call to action. Connected, it shows the avatar, name, a network badge, the balance and a live status dot. If you want your own button, `useWylletButton()` gives you the same state headlessly.
+
+The panel opens in one of three **presentations**: a floating side drawer (the default), a popover anchored to the button, or a modal. On phones it becomes a draggable bottom sheet.
+
+```tsx
+<WylletProvider appearance={{ presentation: 'popover' }}>
+  <WylletButton />
+</WylletProvider>
+```
+
+### A connect flow that knows what's installed
+
+Wyllet detects installed browser wallets through EIP-6963 and connects to them directly. For everything else it uses WalletConnect, which is an optional peer: a QR code on desktop and the wallet's own app link on phones. Users who don't have a wallet yet get an onboarding screen and install links.
+
+The flow is keyboard-friendly: set a `shortcut` such as `mod+k` to toggle the panel, move with the arrow keys, pick a wallet with the number keys 1 to 9, or take the one-tap **Continue with** your last wallet.
+
+### All wallets
+
+With a WalletConnect project id, the WalletConnect option becomes **All wallets**: a searchable directory of about 570 wallets from the WalletConnect registry, with official logos and per-wallet app links. On a phone, picking a wallet opens that exact app. The list is fetched only when the user opens it, and `appearance.walletDirectory: false` turns it off. The story behind this feature is in [Why "WalletConnect" kept opening the wrong wallet](/blog/all-wallets-on-mobile).
+
+### An account panel with real work in it
+
+Once connected, the panel shows either a compact summary or, with `identityCard: true`, a generative holographic card unique to each address. Below it are three tabs:
+
+- **Tokens:** balances for the tokens you define.
+- **Activity:** a timeline of transactions, connects, network switches and sign-ins.
+- **Networks:** a chain grid with the live gas price and a wrong-network state.
+
+A **Receive** screen shows a QR code for the user's own address.
+
+### Chains and tokens in code
+
+You decide which networks and tokens every user sees, and in what order.
+
+```tsx
+import { customChain, getDefaultConfig, popularChains, withDefaultTokens } from 'wyllet'
+
+const myChain = customChain({ id: 424242, name: 'My Chain', rpcUrl: 'https://rpc.mychain.xyz' })
+
+const config = getDefaultConfig({
+  appName: 'My dApp',
+  chains: [...popularChains, myChain],
+})
+
+const tokens = withDefaultTokens([
+  { chainId: 8453, address: '0x…', symbol: 'MYTKN', decimals: 18, pinned: true },
+])
+```
+
+`popularChains` and `popularTestnets` cover common networks with built-in icons, `customChain()` defines any EVM chain in one call, and `pinned`, `chainOrder` and `tokenSort` control the order. Users can optionally import their own tokens by contract address.
+
+### Activity and toasts
+
+Hand Wyllet a transaction hash and it tracks it: a pending toast, a confirmed or failed toast, and a timeline entry that resumes watching after a reload.
+
+```tsx
+const { addTransaction } = useWylletActivity()
+const toast = useWylletToast()
+
+const hash = await writeContractAsync({ /* ... */ })
+addTransaction({ hash, description: 'Mint 1 NFT' })
+
+await toast.promise(bridge(), { loading: 'Bridging…', success: 'Bridged', error: 'Bridge failed' })
+```
+
+### Sign-In With Ethereum and gating
+
+Plug in an auth adapter and the verify step becomes part of the connect flow. Messages are EIP-4361, built with `viem/siwe`. `ConnectGate` renders its children only when the user is connected, on a supported network and signed in.
+
+```tsx
+<ConnectGate>
+  <Dashboard />
+</ConnectGate>
+```
+
+### Themes, class names and translations
+
+Four themes ship in the box: Obsidian, Porcelain, Aurora and Terminal. Each takes knobs for accent color, radius, font and overlay blur, and every token is a CSS variable. The `classNames` prop attaches your own classes to the overlay, panel, button, wallet rows, primary buttons, identity card and toasts. Every string can be renamed or translated through `messages`.
+
+### Official artwork only
+
+Wallet, network and token icons come from each project's own brand kit. Anything without official artwork gets a neutral monogram instead of an approximation.
+
+### Hardened for production
+
+- Hostile onchain data, such as ENS names and token symbols, can't crash rendering.
+- Persisted state is versioned (`wyllet.v1.*`) and validated on every read.
+- Wyllet's own UI renders behind error boundaries, so a bug in it can't take down your app.
+- Server rendering is safe, and the build ships with the `'use client'` directive.
+
+## Getting started
+
+Install Wyllet and its peers. Add `@walletconnect/ethereum-provider` only if you enable WalletConnect.
+
+```bash
+npm install wyllet wagmi viem @tanstack/react-query
+npm install @walletconnect/ethereum-provider
+```
+
+Then wrap your app:
+
+```tsx title="app/providers.tsx"
+'use client'
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WagmiProvider } from 'wagmi'
+import { base, mainnet } from 'viem/chains'
+import { WylletButton, WylletProvider, getDefaultConfig } from 'wyllet'
+
+const config = getDefaultConfig({
+  appName: 'My dApp',
+  walletConnectProjectId: 'YOUR_PROJECT_ID',
+  chains: [mainnet, base],
+})
+const queryClient = new QueryClient()
+
+export function App() {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <WylletProvider shortcut="mod+k">
+          <WylletButton />
+        </WylletProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
+```
+
+Styles are injected for you, so there's no CSS import.
+
+The [quick start](/docs/quick-start) walks through this in more detail. The [playground](/playground) lets you try every option live and copy the code. The source, issues and changelog are on [GitHub](https://github.com/wyllet/wyllet).
+
+If you're coming from RainbowKit, the [migration guide](/docs/migrate-from-rainbowkit) maps each concept to its Wyllet equivalent.
+
+We'd like to hear what you build with it, and what's missing.

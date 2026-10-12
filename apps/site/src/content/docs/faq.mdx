@@ -1,0 +1,61 @@
+Short answers to the questions we hear most. Each one links to the page with the details.
+
+## Is Wyllet free?
+
+Yes. Wyllet is open source under the MIT license, so you can use it in commercial and closed-source projects. The source is on [GitHub](https://github.com/wyllet/wyllet).
+
+## Does it work without WalletConnect?
+
+Yes. Without a `walletConnectProjectId`, Wyllet connects browser extensions (detected through EIP-6963 or `window.ethereum`) and any wallets with a dedicated wagmi connector. You also skip installing `@walletconnect/ethereum-provider`. Add a project id when you want QR codes and mobile wallets. See [WalletConnect](/docs/walletconnect).
+
+## Which wallets are supported?
+
+`defaultWallets()` lists MetaMask, Phantom, Rabby, OKX Wallet and WalletConnect, each with its official icon. Presets also exist for Coinbase Wallet, Rainbow and Trust Wallet. Any other extension that announces itself through EIP-6963 is detected automatically. With WalletConnect enabled, **All wallets** opens a searchable directory from the WalletConnect registry. You can also define your own wallets. See [Wallets](/docs/wallets) and [All wallets](/docs/all-wallets).
+
+## Does it support Solana or other non-EVM chains?
+
+No. Wyllet is built on wagmi and viem, so it connects EVM accounts only. Multi-chain wallets such as Phantom connect through their EVM provider, and the All wallets directory only lists wallets that support EVM chains.
+
+## Can I add a custom or private chain?
+
+Yes. Any EVM chain works. Use a chain from `viem/chains`, or define one with `customChain({ id, name, rpcUrl })` and optionally give it an icon, an explorer and a native currency. See [Chains](/docs/chains).
+
+## Does it work with Next.js and server rendering?
+
+Yes. The build ships with the `'use client'` directive, and Wyllet does not touch `window`, `document` or `localStorage` while rendering on the server. Put the providers in a client component. Content inside `ConnectGate` is never rendered into server HTML. See [Next.js](/docs/nextjs).
+
+## Which React version do I need?
+
+React 18 or later. The other peers are wagmi v3, viem 2 (`^2.15.0`) and `@tanstack/react-query` v5. See [Installation](/docs/installation).
+
+## What does it add to my bundle?
+
+Wyllet has no third-party runtime dependencies. It only imports React, wagmi, viem and react-query, which your app already uses, plus the optional WalletConnect provider if you enable it. Even the QR code encoder is built in. A test in CI fails if any other import appears in the build. See [Security](/docs/security).
+
+## Does Wyllet collect data or include analytics?
+
+No. Wyllet has no analytics or telemetry and makes no network requests of its own. The one exception is opt-in: when WalletConnect is enabled and a user opens All wallets, it loads the wallet list and logos from WalletConnect's registry. Turn that off with `appearance={{ walletDirectory: false }}`. RPC traffic goes through the transports in your wagmi config.
+
+## Can I use my own button?
+
+Yes. `useWylletButton()` returns the connection state and `open` functions, so you can render any element. `useWyllet()` opens and closes the panel from anywhere. See [WylletButton](/docs/wyllet-button) and [Hooks](/docs/hooks).
+
+## Does it work with Tailwind?
+
+Yes. Pass Tailwind classes per element with the `classNames` prop (slots: `overlay`, `panel`, `island`, `walletRow`, `primaryButton`, `identityCard`, `toast`). Every design token is also a CSS variable you can set from your own CSS. See [Class names](/docs/class-names) and [Theming](/docs/theming).
+
+## Can I use it with a strict Content Security Policy?
+
+Partly. Set `injectStyles={false}` and import `wyllet/styles.css` to load the base stylesheet as a file. Wyllet still renders a small inline `<style>` element for theme variables, so `style-src` needs to allow inline styles in 1.0. You also need `img-src data:` for the built-in icons and `connect-src` entries for your RPC and WalletConnect. See [Security](/docs/security#content-security-policy).
+
+## Does it work on mobile?
+
+Yes. On phones the panel opens as a draggable bottom sheet (set `appearance.mobileSheet` to `false` to turn that off). WalletConnect wallets open through their own app links instead of a QR code, and the All wallets directory opens the exact wallet the user picks. See [All wallets](/docs/all-wallets).
+
+## How do I report a bug?
+
+Open an issue at [github.com/wyllet/wyllet/issues](https://github.com/wyllet/wyllet/issues) with the Wyllet, wagmi and React versions, your browser and wallet, and steps to reproduce. For security problems, use a [private security advisory](https://github.com/wyllet/wyllet/security/advisories/new) instead.
+
+## How do I get help?
+
+Email [support@wyllet.dev](mailto:support@wyllet.dev), or follow [@wylletdev on X](https://x.com/wylletdev) for releases and updates. The [AI assistants guide](/docs/ai-assistants) explains how to get correct answers from coding assistants.

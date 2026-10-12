@@ -1,0 +1,230 @@
+Every visual decision in Wyllet is a token in a `Theme` object: colors, radii, fonts, shadows and effects. You pick a preset, adjust it with a few knobs, and every token is emitted as a `--wy-*` CSS variable you can also override from your own stylesheet.
+
+## Presets
+
+Wyllet ships four presets. Each one is a function that returns a `Theme`.
+
+| Preset | Look | Accent | Radius | Overlay blur |
+| --- | --- | --- | --- | --- |
+| `obsidianTheme()` | Deep graphite, dark | Mint `#48ECD2` | `round` | `subtle` |
+| `porcelainTheme()` | Warm paper white, light | Ink `#111114` | `round` | `none` |
+| `auroraTheme()` | Frosted translucent glass, dark. Best over colorful backgrounds. | Violet `#B69CFF` | `round` | `subtle` |
+| `terminalTheme()` | Monospace, phosphor green, dark | Green `#3DFF8F` | `sharp` | `none` |
+
+```tsx
+import { terminalTheme, WylletProvider } from 'wyllet'
+
+<WylletProvider theme={terminalTheme()}>
+```
+
+Without a `theme` prop, Wyllet uses Porcelain in light mode and Obsidian in dark mode, following the operating system.
+
+## Preset options
+
+Every preset accepts the same `ThemeOptions`:
+
+```tsx
+import { obsidianTheme } from 'wyllet'
+
+<WylletProvider
+  theme={obsidianTheme({
+    accentColor: '#C6F432',
+    accentColorForeground: '#1A2400',
+    radius: 'soft',
+    fontFamily: "'Geist', system-ui, sans-serif",
+    overlayBlur: 'heavy',
+  })}
+>
+```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `accentColor` | `string` | Brand color for primary actions, focus rings and live indicators. Sets `colors.accent`. |
+| `accentColorForeground` | `string` | Text and icon color on top of the accent. Sets `colors.accentForeground`. |
+| `accentSecondary` | `string` | Second brand color, blended with the accent in gradients such as the identity card. Sets `colors.accentSecondary`. |
+| `radius` | `'sharp' \| 'soft' \| 'round' \| 'pill'` | Corner radius scale. Sets every token in `radii`. |
+| `fontFamily` | `string` | Body font. Sets `fonts.body`; the mono font is unchanged. |
+| `overlayBlur` | `'none' \| 'subtle' \| 'heavy'` | Blur behind the page overlay. Sets `effects.overlayBlur`. |
+| `overrides` | `DeepPartial<Theme>` | Any token, deep-merged on top after the options above. |
+
+The radius scales map to these values:
+
+| Scale | `panel` | `card` | `button` | `badge` | `icon` |
+| --- | --- | --- | --- | --- | --- |
+| `sharp` | 4px | 3px | 3px | 2px | 3px |
+| `soft` | 14px | 10px | 10px | 6px | 9px |
+| `round` | 24px | 16px | 14px | 8px | 12px |
+| `pill` | 28px | 20px | 999px | 999px | 14px |
+
+The blur scales map to `none`, `blur(3px)` (`subtle`) and `blur(16px) saturate(120%)` (`heavy`).
+
+## Overrides
+
+`overrides` takes a deep partial of the theme, so you only write the tokens you want to change:
+
+```tsx
+<WylletProvider
+  theme={porcelainTheme({
+    accentColor: '#0052FF',
+    overrides: {
+      colors: { islandBackground: '#0052FF', islandText: '#FFFFFF' },
+      radii: { panel: '20px' },
+      shadows: { panel: 'none' },
+    },
+  })}
+>
+```
+
+## Light and dark mode
+
+Pass a pair of themes to switch between them with the color mode:
+
+```tsx
+import { obsidianTheme, porcelainTheme } from 'wyllet'
+
+const accent = { accentColor: '#7B61FF' }
+
+<WylletProvider
+  theme={{ light: porcelainTheme(accent), dark: obsidianTheme(accent) }}
+  colorMode="auto"
+>
+```
+
+| `colorMode` | Behavior |
+| --- | --- |
+| `'auto'` | Follows the OS with `prefers-color-scheme`. The default. |
+| `'light'` | Always uses the `light` theme. |
+| `'dark'` | Always uses the `dark` theme. |
+
+`colorMode` only applies to a pair. A single theme is used in both modes. Wyllet also sets `color-scheme` on its elements to match the active theme.
+
+If your site has its own light and dark toggle, pass its current value as `colorMode` so Wyllet stays in sync with it.
+
+## createTheme
+
+`createTheme(base, overrides)` deep-merges a partial theme into a full one. Use it to derive a theme from a preset, or to build a complete theme of your own.
+
+```ts
+import { createTheme, obsidianTheme } from 'wyllet'
+
+export const brandTheme = createTheme(obsidianTheme(), {
+  colors: {
+    accent: '#FF5A1F',
+    accentForeground: '#1F0A00',
+    background: '#101014',
+  },
+  fonts: { body: "'Inter', sans-serif" },
+})
+```
+
+Neither argument is mutated.
+
+## Theme tokens
+
+The full `Theme` shape:
+
+```ts
+interface Theme {
+  colors: {
+    accent: string // primary actions, focus, live indicators
+    accentForeground: string // text and icons on top of accent
+    accentSecondary: string // blended with accent in gradients
+    background: string // panel background
+    surface: string // rows, cards and secondary buttons
+    surfaceHover: string
+    surfaceActive: string
+    border: string
+    text: string // primary text
+    textSecondary: string // labels, captions
+    textTertiary: string // hints, disabled, kbd
+    overlay: string // page overlay behind the panel
+    success: string
+    danger: string
+    warning: string
+    islandBackground: string // the Wallet Island button
+    islandText: string
+    qrForeground: string
+    qrBackground: string
+  }
+  radii: {
+    panel: string
+    card: string
+    button: string
+    badge: string // badges, kbd, chips
+    icon: string // wallet icons
+  }
+  fonts: {
+    body: string
+    mono: string // labels, addresses, numbers, keyboard hints
+  }
+  shadows: {
+    panel: string
+    island: string
+    toast: string
+  }
+  effects: {
+    overlayBlur: string // backdrop-filter on the page overlay
+    panelBlur: string // backdrop-filter on the panel (glass themes)
+    glow: string // opacity of the accent glow, '0' to '1'
+  }
+}
+```
+
+All values are CSS strings. `effects.glow` is a number written as a string, such as `'0.35'`.
+
+## CSS variables
+
+Each token becomes a custom property named `--wy-<group>-<token>`, with camelCase converted to kebab-case:
+
+| Token | CSS variable |
+| --- | --- |
+| `colors.accent` | `--wy-colors-accent` |
+| `colors.accentForeground` | `--wy-colors-accent-foreground` |
+| `colors.islandBackground` | `--wy-colors-island-background` |
+| `colors.textSecondary` | `--wy-colors-text-secondary` |
+| `radii.panel` | `--wy-radii-panel` |
+| `fonts.mono` | `--wy-fonts-mono` |
+| `shadows.toast` | `--wy-shadows-toast` |
+| `effects.overlayBlur` | `--wy-effects-overlay-blur` |
+| `effects.panelBlur` | `--wy-effects-panel-blur` |
+
+The variables are set on every element Wyllet renders at the top level (the button, the panel, toasts and `<ConnectGate>`), each of which carries a `data-wyllet` attribute. You can use them in your own styles:
+
+```css
+.my-badge {
+  background: var(--wy-colors-surface);
+  border-radius: var(--wy-radii-badge);
+}
+```
+
+Elements outside Wyllet's own markup do not inherit the variables, so use them inside class names you attach with [`classNames`](/docs/class-names), or set your own values as shown next.
+
+### Overriding variables in CSS
+
+Prefer the `theme` prop, because it keeps everything typed. If you need to override a token from a stylesheet, target the `data-wyllet` attribute with a selector more specific than Wyllet's own theme rule, which is a single attribute selector:
+
+```css
+:root [data-wyllet] {
+  --wy-colors-accent: #ff5a1f;
+  --wy-radii-panel: 16px;
+}
+```
+
+Hover tints, focus rings and the accent glow are derived from `--wy-colors-accent` with `color-mix()`, so they follow an overridden accent automatically.
+
+### themeToCssVars
+
+`themeToCssVars(theme)` returns the variables for a theme as a plain object, which is useful for previews or for applying a theme to your own elements:
+
+```ts
+import { obsidianTheme, themeToCssVars } from 'wyllet'
+
+const vars = themeToCssVars(obsidianTheme())
+// { '--wy-colors-accent': '#48ECD2', '--wy-colors-accent-foreground': '#03201B', ... }
+```
+
+## Related
+
+- [Class names](/docs/class-names) for per-element classes.
+- [WylletProvider](/docs/provider) for `theme` and `colorMode`.
+- Build a theme visually in the [playground](/playground) and copy the code.

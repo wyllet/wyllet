@@ -1,0 +1,56 @@
+**All wallets** is a searchable grid of the wallets listed in the WalletConnect registry. Each entry uses the logo and app link the wallet submitted to the registry, so a user can pick their exact wallet instead of scanning a generic code.
+
+## When it appears
+
+All wallets replaces the plain WalletConnect option in the connect list when all of these are true:
+
+- A WalletConnect project ID is configured (`walletConnectProjectId` on `getDefaultConfig`, or on `WylletProvider` for hand-written configs).
+- A WalletConnect connector exists in the wagmi config.
+- `appearance.walletDirectory` is not `false` (it defaults to `true`).
+
+The row reads **All wallets** with the subtitle "Hundreds of wallets via WalletConnect". Picking it opens the directory instead of a QR code. See [WalletConnect](/docs/walletconnect) for getting a project ID.
+
+## What it shows
+
+- **EVM wallets only.** Listings that declare chains but no `eip155:` chain are filtered out. Listings without a logo are skipped.
+- **Search.** The field searches the registry by name. Its placeholder shows the registry's total count, around 570 wallets at the time of writing.
+- **Pages of 40.** The first 40 wallets load when the view opens. **Show more** loads the next page.
+- **Official logos.** Logos come from the registry, as submitted by each wallet.
+
+If the list fails to load, the view shows "Couldn't load the wallet list." with a **Retry** button.
+
+## What happens when a user picks a wallet
+
+| Situation | Result |
+| --- | --- |
+| The wallet's extension is installed (its registry `rdns` matches an EIP-6963 provider) | Connects directly to the extension |
+| Desktop | A QR code with the wallet's logo in the center, to scan from inside that wallet's app |
+| Phone, and the wallet has a mobile link | Opens that exact app with the WalletConnect request |
+| Phone, and the wallet has no mobile link | Shows the "Get" screen with the wallet's store, extension or website links |
+
+The QR screen also has **Copy link** and, when the registry lists download links, a **Get** button for that wallet. On desktop, the directory has a **Use a generic QR code** button at the bottom for wallets that are not listed.
+
+### Mobile links
+
+On phones Wyllet builds the link the same way Reown's own modal does, so every registry wallet opens as its developers expect:
+
+- If the wallet has a universal link, Wyllet opens `UNIVERSAL_LINK/wc?uri=ENCODED_URI`.
+- Otherwise, if it has a native scheme, Wyllet opens `SCHEME://wc?uri=ENCODED_URI`.
+
+A wallet without either link is not sent a bare `wc:` link, because on a phone that opens whichever wallet the operating system picks. The user sees the install screen instead. [WalletConnect](/docs/walletconnect#mobile-links) explains the bare-link problem in more detail.
+
+## Network requests
+
+The directory is the only network request Wyllet makes on its own. It calls the WalletConnect registry at `https://explorer-api.walletconnect.com/v3/wallets` with your project ID, and only when a user opens All wallets. Logos load from the URLs the registry returns. Each page and search result is cached in memory until the page reloads. Failed requests are not cached, so **Retry** really retries.
+
+If your site has a Content Security Policy, allow `https://explorer-api.walletconnect.com` in `connect-src` and the registry's logo host in `img-src`.
+
+## Turning it off
+
+```tsx
+<WylletProvider appearance={{ walletDirectory: false }}>
+  {children}
+</WylletProvider>
+```
+
+With the directory off, the WalletConnect option shows a generic QR code on desktop. On phones it is labeled "Other wallet app" and opens the default wallet app. Your other wallets, including presets with their own mobile links, are not affected.

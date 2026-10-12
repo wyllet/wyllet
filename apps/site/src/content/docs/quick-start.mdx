@@ -1,0 +1,120 @@
+This page builds a minimal app with a working connect button. It assumes you have a React app and have [installed](/docs/installation) Wyllet and its peers.
+
+## 1. Create a wagmi config
+
+`getDefaultConfig()` returns a regular wagmi config with wallet discovery, WalletConnect and your wallet list already wired up.
+
+```ts title="wagmi.ts"
+import { base, mainnet } from 'viem/chains'
+import { getDefaultConfig } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  walletConnectProjectId: 'YOUR_PROJECT_ID', // optional, free at https://cloud.reown.com
+  chains: [mainnet, base], // the first chain is the default
+})
+```
+
+Leave out `walletConnectProjectId` if you only need browser extension wallets for now.
+
+## 2. Add the providers
+
+Wrap your app in wagmi's `WagmiProvider`, react-query's `QueryClientProvider` and `WylletProvider`, in that order. Then render `WylletButton` anywhere inside.
+
+```tsx title="App.tsx"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WagmiProvider } from 'wagmi'
+import { WylletButton, WylletProvider } from 'wyllet'
+import { config } from './wagmi'
+
+const queryClient = new QueryClient()
+
+export function App() {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <WylletProvider>
+          <header>
+            <WylletButton />
+          </header>
+        </WylletProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
+```
+
+That is the whole integration. Styles are injected for you, so there is no CSS import. Clicking the button opens the connect panel. Once connected, the button shows the account, and clicking it opens the account panel.
+
+## 3. Use wagmi as usual
+
+Wyllet does not wrap wagmi's hooks. Read the connection and send transactions with wagmi directly:
+
+```tsx
+import { useConnection } from 'wagmi'
+
+function Greeting() {
+  const { address, isConnected } = useConnection()
+  return isConnected ? <p>Connected as {address}</p> : null
+}
+```
+
+## Next steps
+
+### Pick a theme
+
+The default theme follows the operating system: Porcelain in light mode and Obsidian in dark mode. Pass a preset with your brand color to change it.
+
+```tsx
+import { obsidianTheme } from 'wyllet'
+
+<WylletProvider theme={obsidianTheme({ accentColor: '#C6F432', radius: 'soft' })}>
+```
+
+See [Theming](/docs/theming).
+
+### Choose a presentation
+
+The panel opens as a side drawer by default. Switch to a popover anchored to the button, or a centered modal:
+
+```tsx
+<WylletProvider appearance={{ presentation: 'popover' }}>
+```
+
+See [Presentations](/docs/presentations).
+
+### Add a keyboard shortcut
+
+```tsx
+<WylletProvider shortcut="mod+k">
+```
+
+`mod` is ⌘ on macOS and Ctrl elsewhere. The button shows the shortcut as a hint while disconnected.
+
+### Test without a wallet extension
+
+`burnerWallet()` adds an in-browser wallet whose private key is kept in `localStorage`. It lets you try the connected state locally without installing anything.
+
+```ts title="wagmi.ts"
+import { base, mainnet } from 'viem/chains'
+import { burnerWallet, defaultWallets, getDefaultConfig } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  chains: [mainnet, base],
+  wallets: [...defaultWallets(), burnerWallet()],
+})
+```
+
+<Callout type="warning">
+
+The burner wallet is for development only. Its key is stored unencrypted, and Wyllet logs a console warning when it runs on a non-local host (anything other than addresses like `localhost`, `127.0.0.1` or a `.local` or `.test` domain). Remove it from production builds.
+
+</Callout>
+
+### Keep going
+
+- [Next.js](/docs/nextjs) if you use the App Router.
+- [Configuration](/docs/configuration) for app metadata, RPC transports and wallets.
+- [WylletProvider](/docs/provider) for every provider option.
+- The [playground](/playground) to try options and copy the generated code.

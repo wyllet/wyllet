@@ -1,0 +1,102 @@
+Wyllet draws its own QR codes: for WalletConnect on desktop and for the Receive screen. Our first design used round dots, and we liked how it looked. When we finally ran it through an automated scanner, it decoded 1 code out of 40. This post covers how we measured it, what each change did, what we shipped, and the CI test that now guards it.
+
+## The encoder was never the problem
+
+Wyllet has no runtime dependencies, so it ships its own QR encoder. We'd already verified it: a test compares every module it produces against `uqr`, a port of Project Nayuki's reference encoder, at all four error-correction levels. The bits were right.
+
+But a phone doesn't scan bits. It scans pixels. Between the encoder and the camera sits the part we had designed by eye: the shape of each module, the margins, the finder patterns, the logo in the middle and the size on screen. Nothing tested that.
+
+## The harness
+
+We wrote a test that does what a phone has to do, under conditions worse than a phone usually gets:
+
+1. Take the exact geometry Wyllet draws: module shapes, rounded finder rings, the logo cut-out.
+2. Rasterize it at **240px on a 1x raster**, the low end of what a desktop screen gives you, with 3x3 supersampling per pixel to model anti-aliasing.
+3. Paint it in the real theme colors (`#0C0C10` on `#F4F4F6`).
+4. Decode it with `jsQR` and compare the result with the input.
+
+The inputs are **30 Ethereum addresses and 10 WalletConnect URIs, 40 codes in total**, generated from fixed seeds so every run sees the same data. At error-correction level Q, an address encodes to a 33-module code and a WalletConnect URI to a 65-module code. At 240px, that leaves about 3.5 pixels per module for the URIs, which are the codes people actually scan to connect.
+
+## The results
+
+| Design | Quiet zone | Decoded |
+| --- | --- | --- |
+| Round dots, radius 0.42 module (first design) | 1 module | 1 / 40 |
+| Round dots, radius 0.46 | 2 modules | 33 / 40 |
+| Rounded squares, an earlier corner radius | 2 modules | 35 / 40 |
+| Round dots, radius 0.5 | 2 modules | 40 / 40 |
+| Full-size modules, corner radius 0.3 (shipped) | 2 modules | 40 / 40 |
+
+The second row changed two things at once, the dot radius and the quiet zone, so it doesn't isolate either one. Together they took us from 1 to 33.
+
+## Why the pretty version failed
+
+### The quiet zone
+
+A decoder first has to find the code, and it does that by looking for the three finder patterns, the big squares in the corners. It needs a clean light margin around them to tell where the code ends and the background begins. The QR specification calls for a margin of four modules. Our first design had one, which looks tidy inside a card but leaves the finder patterns pressed against whatever surrounds the code.
+
+### Coverage and anti-aliasing at 1x
+
+A round dot covers less of its square than you'd expect. A circle with radius 0.42 module fills about 55% of the cell, radius 0.46 about 66%, and radius 0.5 about 79%. A square with corners rounded at 0.3 module fills about 92%.
+
+That matters at low resolution. With about 3.5 pixels per module, a small dot doesn't land as a crisp dark shape. Anti-aliasing smears it into grey pixels, and the decoder has to turn the image back into black and white before it can read anything. The less ink each module has, the more of them land on the wrong side of that threshold. Adjacent dark modules also stop touching, so long dark runs turn into dotted lines.
+
+A high-density screen gives each module more pixels to work with. But a WalletConnect QR is scanned off a desktop monitor, and 1x monitors are still common, so that's the case we test.
+
+### Finder patterns
+
+Decoders locate a finder pattern by its proportions: along a line through its center, dark, light, dark, light, dark in a 1:1:3:1:1 ratio. Wyllet draws each finder as a solid rounded ring around a solid rounded center, so the ratio survives along the lines that cross the middle. The test rasterizes those exact shapes, so if we ever restyle the finders in a way that breaks the ratio, it fails.
+
+## What we shipped
+
+The current geometry lives in `src/qr/layout.ts`:
+
+```ts title="packages/wyllet/src/qr/layout.ts"
+export const MODULE_RADIUS = 0.3
+export const QUIET_ZONE = 2
+/** Smallest size (CSS px) Wyllet renders a QR at; the scan test runs at this size on a 1× raster. */
+export const MIN_QR_PX = 240
+/** Share of the code covered by the center logo (ECC level Q restores up to ~25% loss). */
+export const LOGO_RATIO = 0.24
+```
+
+- **Full-size modules with softly rounded corners.** Each module is a 1x1 square with a 0.3-module corner radius. It still reads as soft, but each module keeps most of its ink.
+- **A 2-module quiet zone,** built into the SVG's bounds so the margin is reserved wherever the code is placed. In Wyllet's UI the code also sits on padding in the QR background color.
+- **240px as the minimum.** The connect screen draws the code at 256px. On very narrow phone screens CSS shrinks it a little, but those are high-density displays.
+- **Error correction level Q with a center logo.** When you scan for a specific wallet, its logo sits in the middle, covering 24% of the code's width, with one extra module cleared around it. Level Q can recover from roughly 25% of its codewords being damaged. Because the logo is about a quarter of the width, not of the area, the logo and its cleared border remove only about 7% of the modules in the codes we test.
+
+Radius-0.5 dots also passed all 40. Compared with them, rounded squares fill about 92% of each module instead of about 79%, which leaves more margin for screens and cameras that are worse than our harness.
+
+## The test that keeps it honest
+
+The harness is now part of the test suite, as `test/qr-scan.test.ts`. It imports the same constants and the same `qrLayout` function the component uses, so it tests what ships rather than a copy:
+
+```ts title="packages/wyllet/test/qr-scan.test.ts"
+for (const withLogo of [false, true]) {
+  it(`scans every address and WalletConnect URI at ${MIN_QR_PX}px${withLogo ? ' with a logo' : ''}`, () => {
+    const failures = [...addresses, ...wcUris].filter((text) => {
+      const pixels = rasterize(qrLayout(text, withLogo), MIN_QR_PX)
+      return jsQR(pixels, MIN_QR_PX, MIN_QR_PX)?.data !== text
+    })
+    expect(failures).toEqual([])
+  })
+}
+```
+
+It runs twice, without and with the center logo cut out, and the bar is 40 out of 40 both times. One failure fails CI. If someone shrinks the quiet zone, rounds the modules into dots or grows the logo, the build tells them before a user does.
+
+`jsQR` and `uqr` are dev dependencies only. They run in CI and never reach your users.
+
+## The lesson
+
+Test the design, not just the encoder. Our encoder test proved the bits were right while the thing users actually point a camera at was failing 39 times out of 40. Visual design that carries data needs a test that sees what the user sees: the real shapes, at the real size, at a realistic resolution, read by a real decoder.
+
+If you want to use the same codes in your own UI, the component is exported:
+
+```tsx
+import { QRCode } from 'wyllet'
+
+<QRCode value={address} size={240} />
+```
+
+See [Components](/docs/components#qrcode) for its props, and [How we shipped a wallet connector with zero runtime dependencies](/blog/zero-runtime-dependencies) for why we wrote an encoder in the first place.

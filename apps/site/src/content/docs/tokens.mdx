@@ -1,0 +1,152 @@
+The Tokens tab in the account panel shows the native balance of the connected chain, followed by the ERC-20 tokens you list for that chain. You define the list in code, so every user sees the same tokens in the same order.
+
+## The tokens prop
+
+Set `tokens` on `WylletProvider`:
+
+| Value | Result |
+| --- | --- |
+| `'default'` | Wyllet's blue-chip list (`defaultTokens`). This is the default |
+| `false` | Native balance only |
+| `TokenEntry[]` | Only your tokens, as a flat list with `chainId` on each entry |
+| `TokenList` | Only your tokens, as a map of chain ID to `Token[]` |
+
+```tsx
+<WylletProvider
+  tokens={[
+    { chainId: 8453, address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', symbol: 'USDC', decimals: 6, pinned: true },
+    { chainId: 8453, address: '0x4200000000000000000000000000000000000006', symbol: 'WETH', decimals: 18 },
+  ]}
+>
+  {children}
+</WylletProvider>
+```
+
+The same list as a `TokenList`:
+
+```tsx
+const tokens: TokenList = {
+  8453: [
+    { address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', symbol: 'USDC', decimals: 6, pinned: true },
+    { address: '0x4200000000000000000000000000000000000006', symbol: 'WETH', decimals: 18 },
+  ],
+}
+```
+
+`toTokenList()` converts a flat `TokenEntry[]` into a `TokenList` if you need the map form.
+
+### Default tokens
+
+`defaultTokens` covers five chains:
+
+| Chain | Tokens |
+| --- | --- |
+| Ethereum (1) | USDC, USDT, DAI, WETH, WBTC |
+| Base (8453) | USDC, WETH, DAI |
+| OP Mainnet (10) | USDC, USDT, WETH, OP |
+| Arbitrum One (42161) | USDC, USDT, WETH, ARB |
+| Polygon (137) | USDC, USDT, WETH |
+
+Other chains show only the native balance unless you list tokens for them.
+
+### Adding to the defaults
+
+`withDefaultTokens()` puts your tokens first, then the default tokens for each chain, with duplicate addresses removed.
+
+```tsx
+import { withDefaultTokens } from 'wyllet'
+
+const tokens = withDefaultTokens([
+  { chainId: 8453, address: '0x...', symbol: 'MYTKN', decimals: 18, icon: '/mytkn.svg', pinned: true },
+  { chainId: 424242, address: '0x...', symbol: 'USDC', decimals: 6 },
+])
+
+<WylletProvider tokens={tokens}>{children}</WylletProvider>
+```
+
+It accepts a `TokenEntry[]` or a `TokenList` and returns a `TokenList`.
+
+## Token fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `address` | `Address` | Contract address |
+| `symbol` | `string` | Symbol shown in the list |
+| `decimals` | `number` | Token decimals, used to format balances |
+| `name` | `string` | Optional. Shown under the symbol |
+| `icon` | `string` | Optional. Image URL or data URI. Falls back to a built-in icon, then a monogram |
+| `pinned` | `boolean` | Optional. Always show this token at the top, regardless of balance |
+
+A `TokenEntry` is a `Token` plus `chainId: number`.
+
+## Ordering
+
+List order is the display order. `pinned: true` keeps a token at the top, and pinned tokens keep their list order among themselves. `appearance.tokenSort` decides the rest:
+
+| Value | Order |
+| --- | --- |
+| `'balance'` (default) | Pinned tokens, then tokens the user holds, then the rest. Each group stays in list order |
+| `'list'` | Pinned tokens, then every other token in exactly your list order |
+
+The native balance is always the first row. Tokens with a zero balance are dimmed.
+
+## Add to wallet
+
+Every ERC-20 row has an **Add to wallet** button. It asks the connected wallet to track the token (`wallet_watchAsset` through wagmi), passing the address, symbol, decimals and your `icon` when one is set.
+
+## User token import
+
+Set `allowTokenImport` to let each user add their own ERC-20s.
+
+```tsx
+<WylletProvider allowTokenImport>{children}</WylletProvider>
+```
+
+The Tokens tab then shows an **Import token** button when the user is on a configured chain. The user pastes a contract address, and Wyllet reads the token's `name`, `symbol`, `decimals` and the user's balance onchain. A contract without a readable symbol and decimals is rejected, as is an address already in the list.
+
+Imported tokens:
+
+- Are saved in the user's browser (`localStorage`), per chain. They are not sent anywhere.
+- Appear after your listed tokens with a **Custom** tag, and follow the same `tokenSort` rules.
+- Can be removed with the remove button on their row.
+- Only show while `allowTokenImport` is `true`.
+
+## useWylletTokens
+
+Returns the token list for a chain: your configured tokens in list order, followed by the user's imported tokens. It defaults to the connected chain.
+
+```tsx
+import { useWylletTokens } from 'wyllet'
+
+const { tokens, importToken, removeToken, canImport } = useWylletTokens()
+const onBase = useWylletTokens(8453)
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `tokens` | `ListedToken[]` | Configured tokens, then imported ones. Imported tokens have `custom: true` |
+| `importToken` | `(token: Token, chainId?: number)` | Save a token for the user. Defaults to the hook's chain |
+| `removeToken` | `(address: string, chainId?: number)` | Remove an imported token |
+| `canImport` | `boolean` | The value of `allowTokenImport` |
+
+`tokens` is not sorted by balance. The Tokens tab applies `tokenSort` on top of it.
+
+## TokenIcon
+
+Renders a token logo with an optional chain badge in the corner.
+
+```tsx
+import { TokenIcon } from 'wyllet'
+
+<TokenIcon symbol="USDC" chainId={8453} size={28} />
+```
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `symbol` | `string` | | Token symbol. Picks the built-in icon and the alt text |
+| `src` | `string` | | Custom icon URL. If it fails to load, the built-in icon is used |
+| `chainId` | `number` | | Draws a small `ChainIcon` badge for this chain |
+| `size` | `number` | `32` | Width and height in pixels |
+| `className` | `string` | | Extra class name |
+
+Built-in icons cover ETH, WETH, USDC, USDT, DAI, WBTC, LINK, UNI, OP, ARB, POL, MATIC and AVAX. Any other symbol, including BNB, gets a monogram. `tokenIconUri(symbol)` returns the same icon as a data URI.

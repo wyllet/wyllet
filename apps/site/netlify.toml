@@ -1,0 +1,78 @@
+# Netlify config for wyllet.dev (pnpm monorepo).
+# In the Netlify UI: Base directory = (empty, repo root), Package directory = apps/site.
+# Netlify detects Next.js and deploys it with its OpenNext adapter (SSR, image CDN, proxy, caching).
+
+[build]
+  # The site imports the workspace `wyllet` package, so build the library first.
+  command = "pnpm --filter wyllet build && pnpm --filter site build"
+  publish = "apps/site/.next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  PNPM_VERSION = "8.11.0"
+  NEXT_PUBLIC_SITE_URL = "https://wyllet.dev"
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Set NEXT_PUBLIC_WC_PROJECT_ID in Site configuration → Environment variables (not here).
+
+# ── Every other domain redirects to the canonical https://wyllet.dev, keeping the path ──
+# Add each domain under Domain management → Domain aliases so Netlify serves HTTPS for it.
+
+[[redirects]]
+  from = "https://www.wyllet.dev/*"
+  to = "https://wyllet.dev/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://wyllet.io/*"
+  to = "https://wyllet.dev/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.wyllet.io/*"
+  to = "https://wyllet.dev/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://wyllet.xyz/*"
+  to = "https://wyllet.dev/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.wyllet.xyz/*"
+  to = "https://wyllet.dev/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://wyllet.org/*"
+  to = "https://wyllet.dev/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.wyllet.org/*"
+  to = "https://wyllet.dev/:splat"
+  status = 301
+  force = true
+
+# Plain-HTTP requests to any of the domains (Netlify also forces HTTPS once certificates are issued).
+[[redirects]]
+  from = "http://wyllet.dev/*"
+  to = "https://wyllet.dev/:splat"
+  status = 301
+  force = true
+
+# Cache illustration and brand assets for a week (file names are stable, so not "immutable").
+[[headers]]
+  for = "/illustrations/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/brand/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"

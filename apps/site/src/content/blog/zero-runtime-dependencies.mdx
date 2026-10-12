@@ -1,0 +1,123 @@
+Wyllet 1.0 ships with zero third-party runtime dependencies. If your app already has wagmi, viem, React and react-query, installing it adds exactly one package to your tree: `wyllet`. This post explains why we made that a hard rule for a wallet connector, what we wrote ourselves to keep it, how CI enforces it, and how you can check all of it without trusting us.
+
+## Why it matters for a wallet connector
+
+A wallet connector is an unusual kind of UI library. It runs on the page where your users approve transactions and sign messages, and it decides which wallet a request goes to. Any code in its dependency tree runs with the same access.
+
+Attacks on the npm supply chain are a real and recurring risk: a maintainer account gets compromised, a malicious version of a popular package is published, or a small transitive dependency changes hands. In each case the code that ships to your users is code nobody on your team chose. Every package in the tree is another account, another publish pipeline and another set of credentials that has to stay safe.
+
+We can't remove that risk for the libraries a dApp fundamentally needs. We can avoid adding to it. So the rule for Wyllet is simple: at runtime it may only import packages your dApp already depends on.
+
+## Peers, not dependencies
+
+These are the only packages Wyllet's code imports, and they're all peer dependencies:
+
+| Package | Why |
+| --- | --- |
+| `react`, `react-dom` | Rendering |
+| `wagmi` | Connectors, account state, chain switching |
+| `viem` | Addresses, units, ENS normalization, SIWE messages |
+| `@tanstack/react-query` | Required by wagmi |
+| `@walletconnect/ethereum-provider` | Optional, only for WalletConnect |
+
+A peer dependency is installed by your app, not by Wyllet. That has three effects:
+
+1. Your lockfile decides which version runs, and you update it on your schedule.
+2. There's one copy of wagmi and viem in your bundle, the same one your own code uses.
+3. Wyllet doesn't add a single package your security review hasn't already seen.
+
+## WalletConnect is opt-in
+
+WalletConnect's provider brings its own dependency tree, and many dApps don't need it on day one. So it's an optional peer. Wyllet's bundle never imports it: wagmi's `walletConnect` connector loads it when it's used, and Wyllet only creates that connector when you pass a `walletConnectProjectId`.
+
+If you enable WalletConnect, you install `@walletconnect/ethereum-provider` yourself and pin the version you trust. If you don't, it's not in your tree at all.
+
+## What we wrote ourselves
+
+Keeping the rule meant writing a few things a library would usually install.
+
+**A QR code encoder.** Wyllet shows QR codes for WalletConnect and for receiving funds. Instead of adding a QR package, we wrote `src/qr/encode.ts`, about 330 lines. It only supports byte mode, because Wyllet only ever encodes addresses and WalletConnect URIs, and it follows Project Nayuki's reference implementation.
+
+**A tiny store.** Toasts and transaction tracking are driven by imperative calls, like `toast.success()` from anywhere, so they need state that lives outside React. That's a 30-line store built on React's `useSyncExternalStore`.
+
+**Toasts.** The toast system, including promise toasts and in-place updates, is about 100 lines on top of that store.
+
+**Avatars and icons.** Address avatars are deterministic CSS gradients. Chains and tokens without bundled artwork get an SVG monogram generated in code. Official wallet, chain and token artwork is bundled as static data URIs, so no image is fetched from a CDN.
+
+**Small utilities.** Amount formatting, address shortening, keyboard shortcut matching and a `localStorage` wrapper that validates what it reads.
+
+None of these are hard problems, which is exactly why they aren't worth an extra publisher in your dependency tree.
+
+## Testing the parts we replaced
+
+Writing your own encoder only helps if it's correct, so two test-only packages check it. Neither ships to users.
+
+`uqr`, a port of the same reference encoder, is the oracle. `test/qr.test.ts` encodes a set of inputs at every error-correction level (L, M, Q and H) and requires our output to match `uqr` module for module. The inputs include an address, an `ethereum:` URI, Unicode with emoji, WalletConnect URIs of several lengths and a 1,200-character string.
+
+`jsqr`, a QR decoder, checks the other half. `test/qr-scan.test.ts` rasterizes the styled codes Wyllet actually draws and requires every one to decode. That test changed our design, which we wrote about in [Pretty QR codes that still scan](/blog/qr-codes-that-scan).
+
+Both live in `devDependencies`.
+
+## The test that keeps it true
+
+A rule like this erodes one convenient import at a time, so CI enforces it. `test/policy.test.ts` does three things:
+
+```ts title="packages/wyllet/test/policy.test.ts"
+const ALLOWED = ['react', 'react-dom', 'wagmi', 'viem', '@tanstack/react-query', '@walletconnect/ethereum-provider']
+
+it('has no runtime dependencies', () => {
+  expect(pkg.dependencies ?? {}).toEqual({})
+})
+
+it('only declares allowed peers', () => {
+  expect(Object.keys(pkg.peerDependencies).sort()).toEqual([...ALLOWED].sort())
+})
+```
+
+The third check reads the built bundle, `dist/index.js`, collects every `import` and `from` specifier, and fails if any package outside `ALLOWED` appears. That catches a runtime import even when `package.json` looks clean, for example a package someone marked as external in the build config. The CI workflow runs the build before the tests so the bundle check always scans fresh output.
+
+## How releases are published
+
+A clean dependency list doesn't help if the published tarball can't be trusted, so releases follow the same thinking.
+
+- Releases are published only from GitHub Actions, when a version tag is pushed. The workflow fails if the tag doesn't match the version in `package.json`.
+- Dependencies are installed with `--frozen-lockfile`, and `prepublishOnly` re-runs the typecheck, the full test suite and the build before anything is uploaded.
+- Publishing uses npm Trusted Publishing. GitHub's OIDC token proves which repository and workflow is publishing, so there's no npm token stored anywhere to leak, and npm only accepts publishes for `wyllet` from that workflow.
+- Every version is published with provenance: a signed attestation linking the tarball to the commit and workflow run that built it.
+
+## Check it yourself
+
+You don't have to take any of this on trust.
+
+Confirm there are no dependencies:
+
+```bash
+npm view wyllet dependencies
+# prints nothing
+
+npm view wyllet peerDependencies
+```
+
+Verify registry signatures and provenance for everything you installed, `wyllet` included:
+
+```bash
+npm audit signatures
+```
+
+On [npmjs.com](https://www.npmjs.com/package/wyllet), the provenance section on the package page links to the exact commit and workflow run behind each version.
+
+And read what the bundle imports:
+
+```bash
+npm pack wyllet
+tar -xzf wyllet-*.tgz
+grep -oE 'from "[^".][^"]*"' package/dist/index.js | sort -u
+```
+
+For 1.0 that prints `react`, `react-dom`, `react/jsx-runtime`, and entry points of `viem` and `wagmi`. Nothing else.
+
+## What this doesn't solve
+
+Zero runtime dependencies is a property of Wyllet, not of your app. React, wagmi, viem, react-query and WalletConnect are still dependencies of your dApp, with their own trees. Keep a committed lockfile, install with a frozen lockfile in CI, and review updates to those packages as carefully as anything else that touches signing.
+
+What we can promise is narrower: adding Wyllet doesn't add anyone else's code to your users' pages. The [security page](/docs/security) covers the rest, including network requests, what Wyllet stores and how to report a vulnerability.

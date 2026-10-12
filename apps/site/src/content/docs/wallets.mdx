@@ -1,0 +1,193 @@
+The wallet list is defined in code and passed to `getDefaultConfig`. Wyllet ships presets for common wallets, detects any installed browser wallet through EIP-6963, and lets you describe your own wallets with a plain object.
+
+```tsx title="wagmi.ts"
+import { burnerWallet, defaultWallets, getDefaultConfig } from 'wyllet'
+import { base, mainnet } from 'viem/chains'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID,
+  chains: [mainnet, base],
+  wallets: [...defaultWallets(), burnerWallet()],
+})
+```
+
+When you leave out `wallets`, `getDefaultConfig` uses `defaultWallets()`. The order of the array is the order of the list.
+
+## Built-in presets
+
+Every preset is a function that returns a `Wallet`. Call it with no arguments, or pass options (see [preset options](#preset-options)).
+
+| Preset | Name | Icon | Connects through |
+| --- | --- | --- | --- |
+| `metaMaskWallet()` | MetaMask | Official | Extension, or WalletConnect with a MetaMask app link |
+| `phantomWallet()` | Phantom | Official | Extension |
+| `rabbyWallet()` | Rabby | Official | Extension |
+| `okxWallet()` | OKX Wallet | Official | Extension, or WalletConnect with an OKX app link |
+| `walletConnectWallet()` | WalletConnect | Generic scan icon | WalletConnect QR code |
+| `coinbaseWallet()` | Coinbase Wallet | Neutral monogram | Extension, or WalletConnect with a Coinbase Wallet app link |
+| `rainbowWallet()` | Rainbow | Neutral monogram | Extension, or WalletConnect with a Rainbow app link |
+| `trustWallet()` | Trust Wallet | Neutral monogram | Extension, or WalletConnect with a Trust Wallet app link |
+| `browserWallet()` | Browser Wallet | Generic browser icon | The generic injected (`window.ethereum`) connector |
+| `burnerWallet()` | Burner Wallet | Burner icon | A local, in-browser key (development only) |
+
+`defaultWallets()` returns MetaMask, Phantom, Rabby, OKX Wallet and WalletConnect. These are the presets that bundle official artwork from each wallet's brand kit.
+
+Coinbase Wallet, Rainbow and Trust Wallet do not bundle artwork. They show a neutral monogram unless the extension is installed (then the icon it announces is used) or you pass the official icon yourself:
+
+```tsx
+import { coinbaseWallet, rainbowWallet, trustWallet } from 'wyllet'
+
+const wallets = [
+  coinbaseWallet({ overrides: { icon: '/brand/coinbase-wallet.svg' } }),
+  rainbowWallet({ overrides: { icon: '/brand/rainbow.svg' } }),
+  trustWallet({ overrides: { icon: '/brand/trust.svg' } }),
+]
+```
+
+The WalletConnect option only appears when a WalletConnect connector exists, which means a `walletConnectProjectId` is set. With a project ID it becomes the entry point to [All wallets](/docs/all-wallets). See [WalletConnect](/docs/walletconnect) for setup.
+
+### Browser wallet
+
+`browserWallet()` is a fallback for in-app browsers and older extensions that expose `window.ethereum` without announcing themselves through EIP-6963. You rarely need to list it: when no EIP-6963 wallet is announced and `window.ethereum` exists, Wyllet adds it to the top of the list on its own.
+
+### Burner wallet
+
+`burnerWallet()` is a throwaway wallet for local development and demos. It generates a private key on first use, keeps it in `localStorage`, and signs messages, typed data and transactions with it. Other RPC calls go to the chain's transport from your config.
+
+```tsx
+burnerWallet({ storageKey: 'my-app.burner' })
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `storageKey` | `string` | `'wyllet.v1.burner.key'` | `localStorage` key that holds the private key |
+| `connector` | `() => CreateConnectorFn` | `burner(options)` | Replace the connector |
+| `overrides` | `Partial<Wallet>` | | Override name, icon or other fields |
+
+The connector is also exported as `burner()` for hand-written wagmi configs.
+
+<Callout type="warning">
+
+The burner's private key is stored unencrypted in `localStorage`. Never send real funds to it. When it connects on a host other than `localhost`, `127.0.0.1`, `[::1]`, `0.0.0.0` or a `.local`, `.localhost` or `.test` domain, Wyllet logs a console warning. Remove it from production builds.
+
+</Callout>
+
+## The Wallet type
+
+A preset is just a function that returns this object. You can write one by hand for any wallet.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Stable id. Also used as the key for the "last used" wallet |
+| `name` | `string` | Display name |
+| `icon` | `string` | Image URL or data URI. Installed wallets use the icon they announce instead |
+| `iconBackground` | `string` | Color shown behind transparent icons, including the logo in the QR code |
+| `rdns` | `string \| readonly string[]` | EIP-6963 reverse-DNS identifier(s) used to detect the extension |
+| `connectorId` | `string` | Id of a wagmi connector in your config to use for this wallet |
+| `createConnector` | `() => CreateConnectorFn` | A dedicated wagmi connector (SDK wallets, embedded wallets, burner) |
+| `walletConnect` | `{ mobileUri?: (uri: string) => string }` | Marks WalletConnect support. `mobileUri` builds the link that opens the app on phones |
+| `downloadUrls` | `WalletDownloadUrls` | `browserExtension`, `ios`, `android` and `website` links for the "Get wallet" screen |
+| `description` | `string` | Short text shown on the "Get wallet" and onboarding screens |
+| `featured` | `boolean` | Default `true`. Wallets with `featured: false` are listed after the others and are left out of onboarding suggestions |
+
+A wallet with no way to connect in the current browser and no `downloadUrls` is hidden from the list.
+
+## How a wallet connects
+
+When a user picks a wallet, Wyllet resolves how to connect at that moment:
+
+1. **Installed extension.** If an EIP-6963 provider whose `rdns` matches is announced, Wyllet connects to it directly.
+2. **Dedicated connector.** If the wallet has `createConnector` or a `connectorId` that matches a connector in your config, Wyllet connects with it.
+3. **WalletConnect.** If the wallet has `walletConnect` and a WalletConnect connector exists, Wyllet shows a QR code on desktop. On phones it opens the link returned by `mobileUri`.
+4. **Get wallet.** Otherwise Wyllet shows a "Get" screen with the wallet's download links.
+
+### Detected wallets
+
+Installed wallets you did not list still appear. Every wallet announced through EIP-6963 is added with the name and icon it announces. Installed and recently used wallets are grouped at the top under **Detected**, and the rest follow under **All wallets**.
+
+## Preset options
+
+Every preset accepts `WalletPresetOptions`:
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `overrides` | `Partial<Omit<Wallet, 'createConnector'>>` | Replace any field: name, icon, links, description |
+| `connector` | `() => CreateConnectorFn` | Replace how the wallet connects |
+
+For example, to connect Coinbase Wallet through its SDK (install `@coinbase/wallet-sdk` first):
+
+```tsx
+import { coinbaseWallet as coinbaseSdk } from 'wagmi/connectors'
+import { coinbaseWallet } from 'wyllet'
+
+const coinbase = coinbaseWallet({
+  connector: () => coinbaseSdk({ appName: 'My dApp' }),
+  overrides: { icon: '/brand/coinbase-wallet.svg' },
+})
+```
+
+## Custom wallets
+
+Describe any wallet with a `Wallet` object and add it to the list.
+
+```tsx title="wallets.ts"
+import type { Wallet } from 'wyllet'
+import { defaultWallets } from 'wyllet'
+
+const acme: Wallet = {
+  id: 'acme',
+  name: 'Acme Wallet',
+  icon: 'https://acme.xyz/icon.png',
+  rdns: 'xyz.acme',
+  walletConnect: { mobileUri: (uri) => `acme://wc?uri=${encodeURIComponent(uri)}` },
+  downloadUrls: {
+    browserExtension: 'https://acme.xyz/download',
+    ios: 'https://apps.apple.com/app/acme/id000000000',
+  },
+  description: 'The Acme self-custody wallet.',
+}
+
+export const wallets = [acme, ...defaultWallets()]
+```
+
+With this definition, Acme connects directly when its extension is installed, shows a QR code on desktop, opens the Acme app on phones, and falls back to the download links.
+
+## Hand-written wagmi configs
+
+If you build the config with wagmi's `createConfig`, pass the list to the provider instead. Wallets match connectors by `connectorId` or `rdns`, so add any dedicated connectors to your config yourself.
+
+```tsx
+import { burner, burnerWallet, defaultWallets, WylletProvider } from 'wyllet'
+import { createConfig, http, injected } from 'wagmi'
+import { mainnet } from 'viem/chains'
+
+const config = createConfig({
+  chains: [mainnet],
+  transports: { [mainnet.id]: http() },
+  connectors: [injected(), burner()],
+})
+
+// Inside WagmiProvider and QueryClientProvider:
+<WylletProvider wallets={[...defaultWallets(), burnerWallet()]} appInfo={{ name: 'My dApp' }}>
+  {children}
+</WylletProvider>
+```
+
+For QR codes and mobile wallets with a hand-written config, see [WalletConnect](/docs/walletconnect#hand-written-configs).
+
+## Keyboard
+
+The connect list is built for the keyboard:
+
+| Key | Action |
+| --- | --- |
+| `↑` / `↓` | Move through the list (wraps around) |
+| `Enter` | Connect the highlighted wallet |
+| `1`–`9` | Connect the wallet at that position |
+
+Number keys work while the search field is empty and no modifier key is held. If any wallet's name starts with that digit, the keystroke goes to search instead.
+
+The last wallet the user connected with appears at the top as **Continue with** followed by its name, and it is always position `1`. It is hidden while searching. Wyllet remembers the three most recent wallets in `localStorage`.
+
+A search field appears when `appearance.walletSearch` is `true`, or when it is `'auto'` (the default) and the list has six or more wallets. To open the panel from anywhere with a shortcut such as `mod+k`, set the `shortcut` prop on [WylletProvider](/docs/provider).

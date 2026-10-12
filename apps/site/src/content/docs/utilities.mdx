@@ -1,0 +1,338 @@
+Besides components and hooks, Wyllet exports helper functions for configuration, chains, tokens, theming, translations and formatting, plus the TypeScript types behind every public API. Everything on this page is a named export of `wyllet`.
+
+## Configuration
+
+### getDefaultConfig
+
+Creates a wagmi config with EIP-6963 discovery, WalletConnect (when you pass a project id), your wallet list and app metadata. It is covered in [Configuration](/docs/configuration).
+
+```ts
+import { getDefaultConfig } from 'wyllet'
+import { base, mainnet } from 'viem/chains'
+
+const config = getDefaultConfig({
+  appName: 'My dApp',
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID,
+  chains: [mainnet, base],
+})
+```
+
+## Chains
+
+### customChain
+
+Defines any EVM chain in one call. The result is a regular viem `Chain` (built with viem's `defineChain`) that also carries Wyllet's icon metadata under `chain.custom.wyllet`.
+
+```ts
+function customChain(input: CustomChainInput): Chain
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id` | `number` | | Chain id. |
+| `name` | `string` | | Display name. |
+| `rpcUrl` | `string` | | HTTPS JSON-RPC endpoint. |
+| `nativeCurrency` | `{ name, symbol, decimals }` | Ether, `ETH`, `18` | Native currency. |
+| `explorerUrl` | `string` | | Block explorer base URL. A trailing slash is removed. |
+| `testnet` | `boolean` | | Marks the chain as a testnet (shown with a tag in the Networks tab). |
+| `icon` | `string` | | Chain logo URL or data URI. |
+| `color` | `string` | | Brand color for the generated monogram when there is no icon. |
+| `nativeIcon` | `string` | | Icon for the native currency in the Tokens tab. |
+
+```ts
+const myChain = customChain({
+  id: 424242,
+  name: 'My Chain',
+  rpcUrl: 'https://rpc.mychain.xyz',
+  explorerUrl: 'https://scan.mychain.xyz',
+  nativeCurrency: { name: 'My Token', symbol: 'MYT', decimals: 18 },
+  icon: '/mychain.svg',
+})
+```
+
+### popularChains
+
+A readonly array of viem chains with built-in icons: Ethereum, Base, OP, Arbitrum, Polygon, BNB Smart Chain, Avalanche, zkSync, Linea and Scroll, in that order.
+
+### popularTestnets
+
+A readonly array of testnets: Sepolia, Base Sepolia, OP Sepolia, Arbitrum Sepolia and Polygon Amoy.
+
+```ts
+getDefaultConfig({
+  appName: 'My dApp',
+  chains: [...popularChains, ...popularTestnets],
+})
+```
+
+See [Chains](/docs/chains) for ordering and the Networks tab.
+
+## Tokens
+
+### defaultTokens
+
+A `TokenList` of blue-chip tokens, used when `tokens` is `'default'` (the provider's default):
+
+| Chain | Tokens |
+| --- | --- |
+| Ethereum (1) | USDC, USDT, DAI, WETH, WBTC |
+| Base (8453) | USDC, WETH, DAI |
+| OP (10) | USDC, USDT, WETH, OP |
+| Arbitrum (42161) | USDC, USDT, WETH, ARB |
+| Polygon (137) | USDC, USDT, WETH |
+
+### withDefaultTokens
+
+```ts
+function withDefaultTokens(custom: TokenList | TokenEntry[]): TokenList
+```
+
+Your tokens first, then `defaultTokens` for each chain, with duplicates (same address, case-insensitive) removed.
+
+```tsx
+const tokens = withDefaultTokens([
+  { chainId: 8453, address: '0x…', symbol: 'MYTKN', decimals: 18, pinned: true },
+])
+
+<WylletProvider tokens={tokens} />
+```
+
+### toTokenList
+
+```ts
+function toTokenList(input: TokenList | TokenEntry[]): TokenList
+```
+
+Turns a flat `TokenEntry[]` (each entry has a `chainId`) into a `TokenList` keyed by chain id, keeping order. A `TokenList` is returned unchanged.
+
+### tokenIconUri
+
+```ts
+function tokenIconUri(symbol: string): string
+```
+
+Returns the icon `TokenIcon` uses for a symbol: built-in official artwork when bundled (matched as given, then upper-cased), otherwise a generated monogram as an SVG data URI. It never throws, including for emoji or markup in the symbol.
+
+See [Tokens](/docs/tokens) for pinning, sorting and user token import.
+
+## Theming
+
+### Theme presets
+
+Four presets, each a function that takes optional `ThemeOptions` and returns a `Theme`:
+
+| Preset | Look |
+| --- | --- |
+| `obsidianTheme` | Deep graphite with a mint accent. The default dark theme. |
+| `porcelainTheme` | Paper white with ink-black actions. The default light theme. |
+| `auroraTheme` | Translucent glass with a violet to cyan glow. Best over colorful backgrounds. |
+| `terminalTheme` | Monospace, sharp corners, phosphor green. |
+
+`ThemeOptions`:
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `accentColor` | `string` | Brand color for primary actions, focus and live indicators. |
+| `accentColorForeground` | `string` | Text color on top of the accent. |
+| `accentSecondary` | `string` | Second brand color used in gradients. |
+| `radius` | `'sharp' \| 'soft' \| 'round' \| 'pill'` | Corner radius scale. |
+| `fontFamily` | `string` | Body font stack. |
+| `overlayBlur` | `'none' \| 'subtle' \| 'heavy'` | Blur behind the panel overlay. |
+| `overrides` | `DeepPartial<Theme>` | Deep-merged after the options above. |
+
+```tsx
+<WylletProvider theme={obsidianTheme({ accentColor: '#C6F432', radius: 'soft' })} />
+```
+
+### createTheme
+
+```ts
+function createTheme(base: Theme, overrides?: DeepPartial<Theme>): Theme
+```
+
+Deep-merges `overrides` into `base` without mutating either.
+
+```ts
+const brand = createTheme(porcelainTheme(), {
+  colors: { accent: '#5B3DF5', islandBackground: '#F7F5FF' },
+  radii: { button: '999px' },
+})
+```
+
+### themeToCssVars
+
+```ts
+function themeToCssVars(theme: Theme): Record<string, string>
+```
+
+Flattens a theme into the CSS custom properties Wyllet uses, named `--wy-<group>-<token>` in kebab case. For example `colors.accentForeground` becomes `--wy-colors-accent-foreground` and `radii.panel` becomes `--wy-radii-panel`. Useful for styling your own UI to match. See [Theming](/docs/theming).
+
+## Translations
+
+### en
+
+The English strings object. Every user-facing string Wyllet renders is a key in `en`. Pass a partial object to the provider's `messages` prop to rename or translate. Placeholders such as `{name}` are filled in at render time.
+
+```tsx
+import { en } from 'wyllet'
+
+<WylletProvider messages={{ connect: 'Conectar', connectTo: 'Conectar a {app}' }} />
+```
+
+See [Translations](/docs/i18n).
+
+## Formatting
+
+### formatAmount
+
+```ts
+function formatAmount(value: bigint, decimals: number, maxSignificant?: number): string
+```
+
+Formats a raw token amount for display. `maxSignificant` defaults to `4`.
+
+| Raw value (18 decimals) | Output |
+| --- | --- |
+| 0 | `0` |
+| 0.00001 | `<0.0001` |
+| 0.1234567 | `0.1235` |
+| 1.5 | `1.5` |
+| 12.3456 | `12.35` |
+| 12345 | `12.3K` |
+| 2500000 | `2.5M` |
+
+Values of a billion or more use a `B` suffix. Invalid `decimals` (not an integer from 0 to 77) fall back to 18.
+
+### shortenAddress
+
+```ts
+function shortenAddress(address: string, chars?: number): string
+```
+
+Keeps `chars` characters (default `4`) on each side: `0x1234567890abcdef1234567890abcdef12345678` becomes `0x1234…5678`. Strings already short enough are returned unchanged.
+
+## Wallets
+
+The wallet presets (`metaMaskWallet`, `phantomWallet`, `rabbyWallet`, `okxWallet`, `walletConnectWallet`, `coinbaseWallet`, `rainbowWallet`, `trustWallet`, `browserWallet`, `burnerWallet`) and `defaultWallets` are covered in [Wallets](/docs/wallets).
+
+### burner
+
+```ts
+function burner(options?: BurnerOptions): CreateConnectorFn
+```
+
+The wagmi connector behind `burnerWallet()`: an in-browser wallet whose private key is generated and kept unencrypted in `localStorage` (key `wyllet.v1.burner.key` unless you pass `storageKey`). Non-signing RPC calls go to the chain's transport from your config. Use it only for local development and demos. It logs a console warning the first time it connects on a host that is not local (`localhost`, `127.0.0.1`, `[::1]`, `0.0.0.0`, or a `.local`, `.localhost` or `.test` domain).
+
+```ts
+import { createConfig, http } from 'wagmi'
+import { sepolia } from 'viem/chains'
+import { burner } from 'wyllet'
+
+const config = createConfig({
+  chains: [sepolia],
+  transports: { [sepolia.id]: http() },
+  connectors: [burner()],
+})
+```
+
+<Callout type="warning">
+
+Never hold real funds in a burner wallet. Anyone with access to the browser's storage, including any script running on the page, can read the key.
+
+</Callout>
+
+## Types
+
+All types are exported from `wyllet` and can be imported with `import type`.
+
+```ts
+import type { Theme, Wallet, WylletAuthAdapter } from 'wyllet'
+```
+
+### Provider and configuration
+
+| Type | Description |
+| --- | --- |
+| `WylletProviderProps` | Props of `WylletProvider`. |
+| `DefaultConfigParameters` | Parameters of `getDefaultConfig`. |
+| `AppInfo` | App metadata: `name`, `description`, `url`, `icon`, `learnMoreUrl`, `termsUrl`, `privacyUrl`. |
+| `Appearance` | The provider's `appearance` prop. |
+| `Presentation` | `'drawer' \| 'popover' \| 'modal'`. |
+| `PanelView` | `'connect' \| 'account'`. |
+| `AccountTab` | `'tokens' \| 'activity' \| 'networks'`. |
+| `OpenOptions` | `anchor` and `tab` options for opening the panel. |
+| `WylletSlot` | Elements that accept `classNames`: `'overlay' \| 'panel' \| 'island' \| 'walletRow' \| 'primaryButton' \| 'identityCard' \| 'toast'`. |
+| `CustomAvatarProps` | Props passed to a custom `avatar` component: `address`, `ensImage`, `size`. |
+
+### Components and hooks
+
+| Type | Description |
+| --- | --- |
+| `WylletButtonProps` | Props of `WylletButton`. |
+| `WylletButtonState` | Return type of `useWylletButton`. |
+| `ConnectGateProps` | Props of `ConnectGate`. |
+| `GateReason` | `'disconnected' \| 'wrongNetwork' \| 'unauthenticated'`. |
+| `AvatarProps` | Props of `Avatar`. |
+| `ChainIconProps` | Props of `ChainIcon`. |
+| `TokenIconProps` | Props of `TokenIcon`. |
+| `QRCodeProps` | Props of `QRCode`. |
+| `ListedToken` | `Token` plus `custom?: boolean` for user-imported tokens. |
+| `WalletOption` | One entry from `useWalletOptions`. |
+| `WalletGroup` | A group from `useWalletOptions`: `id` (`'installed' \| 'popular' \| 'more'`) and `wallets`. |
+
+### Theming
+
+| Type | Description |
+| --- | --- |
+| `Theme` | Every design token, in five groups: `colors`, `radii`, `fonts`, `shadows`, `effects`. |
+| `ThemeInput` | A `Theme`, or a `{ light, dark }` pair. |
+| `ThemeOptions` | Options accepted by the presets. |
+| `ColorMode` | `'light' \| 'dark' \| 'auto'`. |
+| `RadiusScale` | `'sharp' \| 'soft' \| 'round' \| 'pill'`. |
+| `BlurScale` | `'none' \| 'subtle' \| 'heavy'`. |
+| `DeepPartial` | Recursive `Partial`, used for theme overrides. |
+
+### Wallets
+
+| Type | Description |
+| --- | --- |
+| `Wallet` | A wallet in the connect view: `id`, `name`, `icon`, and optional `iconBackground`, `rdns`, `connectorId`, `createConnector`, `walletConnect`, `downloadUrls`, `description`, `featured`. |
+| `WalletDownloadUrls` | `browserExtension`, `ios`, `android`, `website`. |
+| `WalletPresetOptions` | Options for every preset: `connector` and `overrides`. |
+| `BurnerOptions` | Options for `burner` and `burnerWallet`: `storageKey`. |
+
+### Chains and tokens
+
+| Type | Description |
+| --- | --- |
+| `CustomChainInput` | Input of `customChain`. |
+| `ChainExtras` | Wyllet's chain metadata: `icon`, `color`, `nativeIcon`. |
+| `Token` | `address`, `symbol`, `decimals`, and optional `name`, `icon`, `pinned`. |
+| `TokenEntry` | `Token` plus `chainId`, for flat lists. |
+| `TokenList` | Tokens keyed by chain id. |
+
+### Auth
+
+| Type | Description |
+| --- | --- |
+| `WylletAuthAdapter` | The `auth` adapter: `getNonce`, `verify`, `signOut`, and optional `createMessage`, `getSession`, `statement`. |
+| `AuthStatus` | `'loading' \| 'unauthenticated' \| 'authenticated'`. |
+
+### Toasts and activity
+
+| Type | Description |
+| --- | --- |
+| `ToastApi` | Return type of `useWylletToast`. |
+| `ToastOptions` | Options for a toast. |
+| `Toast` | A toast in the store: `ToastOptions` plus `id`, `status`, `createdAt`, `dismissed`. |
+| `ToastStatus` | `'info' \| 'success' \| 'error' \| 'loading'`. |
+| `ToastPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'`. |
+| `ActivityItem` | One timeline entry: `id`, `kind`, `title`, `description`, `status`, `account`, `chainId`, `hash`, `timestamp`. |
+| `ActivityKind` | `'transaction' \| 'connect' \| 'disconnect' \| 'network' \| 'signIn' \| 'custom'`. |
+| `ActivityStatus` | `'pending' \| 'success' \| 'failed' \| 'info'`. |
+
+### Translations
+
+| Type | Description |
+| --- | --- |
+| `Messages` | The shape of `en`: every string key Wyllet uses. |

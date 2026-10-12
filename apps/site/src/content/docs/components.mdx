@@ -1,0 +1,196 @@
+Wyllet exports nine components and one helper function for avatars. `WylletButton`, `WylletEmbed`, `ConnectGate`, `Avatar` and `ChainIcon` read Wyllet's context and must be rendered inside `WylletProvider`. `WylletMark` and `QRCode` work anywhere. `TokenIcon` works anywhere unless you pass `chainId`, which renders a `ChainIcon` badge.
+
+```tsx
+import {
+  Avatar,
+  addressGradient,
+  ChainIcon,
+  ConnectGate,
+  QRCode,
+  TokenIcon,
+  WylletButton,
+  WylletEmbed,
+  WylletMark,
+  WylletProvider,
+} from 'wyllet'
+```
+
+## WylletProvider
+
+Holds Wyllet's state, renders the panel and toasts, and injects the styles. Place it inside `WagmiProvider` and `QueryClientProvider`.
+
+```tsx
+<WagmiProvider config={config}>
+  <QueryClientProvider client={queryClient}>
+    <WylletProvider>{children}</WylletProvider>
+  </QueryClientProvider>
+</WagmiProvider>
+```
+
+Every prop is documented on [WylletProvider](/docs/provider).
+
+## WylletButton
+
+The Island button. A call to action when disconnected, and the account's avatar, name, network badge and balance when connected. See [WylletButton](/docs/wyllet-button).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `label` | `string` | `messages.connect` (`'Connect'`) | Text shown when disconnected. |
+| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Button size. |
+| `display` | `'full' \| 'compact' \| 'avatar'` | `'full'` | `full`: avatar, name and balance. `compact`: avatar and name. `avatar`: avatar only. |
+| `className` | `string` | | Extra class on the button. |
+
+```tsx
+<WylletButton size="lg" display="compact" label="Enter app" />
+```
+
+When connected, the button shows "Verify" if a sign-in is still needed and "Wrong network" when the wallet is on a chain your config does not include. Clicking it in the wrong-network state opens the Networks tab.
+
+The button renders inside an error boundary. If it ever crashes, it is replaced with a plain connect button that still opens the panel. For a fully custom button, use [`useWylletButton`](/docs/hooks#usewylletbutton).
+
+## ConnectGate
+
+Renders its children only when the user is connected, on a supported network and, if an `auth` adapter is set, signed in. Otherwise it renders a prompt with a button that opens the right step. See [ConnectGate](/docs/connect-gate).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | | Content to show when every requirement is met. |
+| `requireSupportedChain` | `boolean` | `true` | Also require a chain from your config. |
+| `requireAuth` | `boolean` | `true` | Also require Sign-In With Ethereum when an `auth` adapter is set. |
+| `fallback` | `ReactNode \| ((reason: GateReason) => ReactNode)` | | Replaces the built-in prompt. |
+| `title` | `ReactNode` | `messages.gateTitle` | Prompt title in the disconnected state. |
+| `description` | `ReactNode` | `messages.gateBody` | Prompt text in the disconnected state. |
+| `className` | `string` | | Extra class on the prompt. |
+
+`GateReason` is `'disconnected' | 'wrongNetwork' | 'unauthenticated'`.
+
+```tsx
+<ConnectGate requireAuth={false} fallback={(reason) => <p>Blocked: {reason}</p>}>
+  <Dashboard />
+</ConnectGate>
+```
+
+Children are never rendered on the server or during the first client render, so gated content does not leak into server HTML.
+
+## WylletEmbed
+
+The real Wyllet panel rendered inline, inside your own layout, instead of in an overlay. Use it for a connect card on a sign-in page, an account panel in a sidebar, or a live preview. It shows the connect view while the user is disconnected and the account view once they are connected (and signed in, when you use SIWE).
+
+```tsx
+import { WylletEmbed } from 'wyllet'
+
+export function SignInPage() {
+  return (
+    <main className="grid place-items-center">
+      <WylletEmbed />
+    </main>
+  )
+}
+```
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `view` | `'auto' \| 'connect' \| 'account'` | `'auto'` | Which view to show. `auto` follows the connection state |
+| `fill` | `boolean` | `false` | Stretch to the parent's height, like the drawer, instead of sizing to the content |
+| `className` | `string` | | Class on the outer wrapper |
+
+It uses the provider's theme, wallets, tokens and options, and the `panel` class name slot. Its navigation is local: connecting, switching tabs or going back never opens the drawer, and there is no close button. Wallet detection only exists in the browser, so it renders after mount and outputs an empty box during server rendering. It is at most 420px wide.
+
+## Avatar
+
+An address avatar. Shows the ENS avatar when one exists and ENS is enabled, otherwise a gradient generated from the address. If you pass a custom `avatar` component to `WylletProvider`, `Avatar` renders that instead.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `address` | `string` | | The address to draw. |
+| `size` | `number` | `24` | Width and height in pixels. |
+| `className` | `string` | | Extra class, added after `wy-avatar`. |
+
+```tsx
+<Avatar address="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" size={40} />
+```
+
+ENS names that fail normalization are ignored instead of throwing, so a malicious reverse record cannot crash the avatar.
+
+### addressGradient
+
+```ts
+function addressGradient(address: string): string
+```
+
+Returns the CSS `background` value `Avatar` uses: a deterministic gradient, so the same address gets the same colors everywhere. Use it to match Wyllet's avatars in your own UI.
+
+```tsx
+<div style={{ width: 32, height: 32, borderRadius: '50%', background: addressGradient(address) }} />
+```
+
+## ChainIcon
+
+A chain logo as an `img`. The source is chosen in this order: the provider's `chainIcons` prop, the `icon` passed to `customChain`, a built-in official mark, then a colored monogram.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `chainId` | `number` | | The chain id. |
+| `size` | `number` | `20` | Width and height in pixels. |
+| `className` | `string` | | Extra class, added after `wy-chain-icon`. |
+
+```tsx
+<ChainIcon chainId={8453} size={24} />
+```
+
+Built-in marks cover Ethereum, OP, Arbitrum, Base, Polygon, Avalanche, zkSync, Linea, Scroll, Gnosis, Zora and Blast, and their testnets. BNB Chain gets a monogram because its brand guidelines require approval first.
+
+## TokenIcon
+
+A token logo with an optional chain badge in the corner.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `symbol` | `string` | | Token symbol. Used to pick a built-in mark and as the image's `alt` text. |
+| `src` | `string` | | Custom icon URL. If it fails to load, the built-in mark or monogram is used. |
+| `chainId` | `number` | | Draws a `ChainIcon` badge at 42% of `size`. |
+| `size` | `number` | `32` | Width and height in pixels. |
+| `className` | `string` | | Extra class on the wrapper. |
+
+```tsx
+<TokenIcon symbol="USDC" chainId={8453} size={28} />
+```
+
+Built-in marks: ETH, WETH, USDC, USDT, DAI, WBTC, OP, ARB, POL, MATIC, AVAX, LINK and UNI. Any other symbol gets a generated monogram. To get the icon URL without rendering, use [`tokenIconUri`](/docs/utilities#tokeniconuri).
+
+## WylletMark
+
+Wyllet's logo as an inline SVG. It makes no image request and is hidden from assistive technology (`aria-hidden`).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `number` | `16` | Width and height in pixels. |
+| `className` | `string` | | Class on the `svg`. |
+
+```tsx
+<WylletMark size={20} />
+```
+
+## QRCode
+
+The QR code Wyllet uses for WalletConnect and the Receive screen, rendered as an SVG. The encoder is built in. See [Pretty QR codes that still scan](/blog/qr-codes-that-scan) for how the design was tested.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `string` | | Text to encode. |
+| `size` | `number` | `256` | Width and height in pixels. |
+| `logo` | `string` | | Image URL drawn in the center. The modules behind it are removed. |
+| `logoBackground` | `string` | `'transparent'` | Fill behind the logo. |
+
+```tsx
+<div style={{ background: '#fff', color: '#111', padding: 8, display: 'inline-block' }}>
+  <QRCode value="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" size={240} />
+</div>
+```
+
+How it renders:
+
+- Modules are drawn in `currentColor` on a transparent background. Put it on a light background with a dark `color`, as in the example.
+- It uses error correction level Q. A center logo covers about 24% of the code's width, with one extra module cleared around it.
+- A 2-module quiet zone is included inside the SVG's bounds.
+- Wyllet's scan test runs at 240px, so avoid rendering it smaller than that.

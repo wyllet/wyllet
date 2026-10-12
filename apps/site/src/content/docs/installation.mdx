@@ -1,0 +1,109 @@
+Install the `wyllet` package together with its peer dependencies. If your dApp already uses wagmi, you likely have most of them.
+
+## Install
+
+```bash title="pnpm"
+pnpm add wyllet wagmi viem @tanstack/react-query
+```
+
+```bash title="npm"
+npm install wyllet wagmi viem @tanstack/react-query
+```
+
+```bash title="yarn"
+yarn add wyllet wagmi viem @tanstack/react-query
+```
+
+```bash title="bun"
+bun add wyllet wagmi viem @tanstack/react-query
+```
+
+`react` and `react-dom` are peers too. They are already part of any React app.
+
+## Peer dependencies
+
+Wyllet has no runtime dependencies of its own. Everything it needs is a peer dependency that your dApp provides.
+
+| Package | Version | Required |
+| --- | --- | --- |
+| `react` | `>=18` | Yes |
+| `react-dom` | `>=18` | Yes |
+| `wagmi` | `^3.0.0` | Yes |
+| `viem` | `^2.15.0` | Yes |
+| `@tanstack/react-query` | `>=5.0.0` | Yes |
+| `@walletconnect/ethereum-provider` | `^2.21.1` | Only with WalletConnect |
+
+## Enable WalletConnect
+
+WalletConnect lets users connect mobile wallets by scanning a QR code on desktop, or by opening the wallet app on a phone. It also powers the **All wallets** directory. It is optional, and it is only active when you pass a `walletConnectProjectId`.
+
+To enable it:
+
+1. Create a free project ID at [cloud.reown.com](https://cloud.reown.com).
+2. Install the WalletConnect provider.
+3. Pass the ID to `getDefaultConfig()`.
+
+```bash title="pnpm"
+pnpm add @walletconnect/ethereum-provider
+```
+
+```bash title="npm"
+npm install @walletconnect/ethereum-provider
+```
+
+```bash title="yarn"
+yarn add @walletconnect/ethereum-provider
+```
+
+```bash title="bun"
+bun add @walletconnect/ethereum-provider
+```
+
+```ts title="wagmi.ts"
+import { base, mainnet } from 'viem/chains'
+import { getDefaultConfig } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  walletConnectProjectId: 'YOUR_PROJECT_ID',
+  chains: [mainnet, base],
+})
+```
+
+Without a project ID, Wyllet does not add a WalletConnect connector, and the WalletConnect option is hidden from the wallet list. Installed browser wallets still work.
+
+<Callout>
+
+Keep the project ID in an environment variable, for example `NEXT_PUBLIC_WC_PROJECT_ID` in Next.js or `VITE_WC_PROJECT_ID` in Vite. It is a public value, but an environment variable makes it easy to use different projects per environment. See [WalletConnect](/docs/walletconnect) for domain allowlists and other settings.
+
+</Callout>
+
+## Styles
+
+You do not need to import a stylesheet. `<WylletProvider>` injects its base styles in a `<style>` element when it renders.
+
+If you would rather serve the base stylesheet as a file, turn injection off and import it yourself:
+
+```tsx title="main.tsx"
+import 'wyllet/styles.css'
+```
+
+```tsx
+<WylletProvider injectStyles={false}>{children}</WylletProvider>
+```
+
+<Callout type="warning">
+
+`injectStyles={false}` only removes the base stylesheet. The provider still renders a small `<style>` element that holds your theme's `--wy-*` CSS variables. Account for it if your Content Security Policy restricts inline styles. See [Security](/docs/security).
+
+</Callout>
+
+## TypeScript
+
+Wyllet ships its own type definitions for both ESM and CommonJS. No `@types` package is needed.
+
+## Next steps
+
+- [Quick start](/docs/quick-start): render your first connect button.
+- [Next.js](/docs/nextjs): App Router setup.
+- [Configuration](/docs/configuration): every `getDefaultConfig()` option.

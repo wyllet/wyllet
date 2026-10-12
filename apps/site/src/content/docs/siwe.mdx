@@ -1,0 +1,179 @@
+Sign-In With Ethereum (EIP-4361) proves that the user controls the connected address. Pass an auth adapter to `WylletProvider` and Wyllet adds a sign-in step to the connect flow. Your backend issues the nonce, verifies the signature and owns the session.
+
+## How it works
+
+1. The user connects a wallet.
+2. Before the panel closes, Wyllet shows a sign-in step ("Prove it's you") with a **Sign to verify** button.
+3. On click, Wyllet calls `getNonce()`, builds a SIWE message, and asks the wallet to sign it. Signing is free and sends no transaction.
+4. Wyllet passes the message and signature to `verify()`. If it returns `true`, the user is signed in and the panel closes.
+
+**Not now** on the sign-in step disconnects the wallet and closes the panel. If `verify()` returns `false` or throws, the step shows "Verification failed" and the user can try again.
+
+A session belongs to one address. Wyllet calls `signOut()` and clears the session when the wallet disconnects, when the user switches to another account, or when they press Disconnect in the account panel. If a restored session belongs to a different address than the connected one, Wyllet signs it out.
+
+While a connected user is not signed in, the button reads "Verify" and opens the sign-in step.
+
+## The adapter
+
+```ts
+import type { WylletAuthAdapter } from 'wyllet'
+```
+
+| Method | Required | Description |
+| --- | --- | --- |
+| `getNonce()` | Yes | Fetch a fresh nonce from your backend. Returns `Promise<string>` |
+| `verify(args)` | Yes | Verify the signature on your backend and start a session. Receives `{ message, signature, address, chainId }`. Returns `Promise<boolean>` |
+| `signOut()` | Yes | End the session. Returns `Promise<void>`. Errors are ignored and the local session is cleared anyway |
+| `getSession()` | No | Restore an existing session on page load. Returns `Promise<{ address } \| null>` |
+| `createMessage(args)` | No | Build your own message. Receives `{ address, chainId, nonce, domain, uri }` and returns a string |
+| `statement` | No | A human-readable statement inserted in the default message |
+
+By default the message is built with `createSiweMessage` from `viem/siwe`, using `window.location.host` as the domain, `window.location.origin` as the URI, version `1`, the connected chain ID, your nonce, your `statement`, and the current time as `issuedAt`.
+
+## Client
+
+```tsx title="app/auth.ts"
+'use client'
+import type { WylletAuthAdapter } from 'wyllet'
+
+export const auth: WylletAuthAdapter = {
+  statement: 'Sign in to My dApp.',
+  getNonce: () => fetch('/api/siwe/nonce').then((r) => r.text()),
+  verify: ({ message, signature }) =>
+    fetch('/api/siwe/verify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message, signature }),
+    }).then((r) => r.ok),
+  signOut: () => fetch('/api/siwe/logout', { method: 'POST' }).then(() => undefined),
+  getSession: () => fetch('/api/siwe/session').then((r) => (r.ok ? r.json() : null)),
+}
+```
+
+```tsx title="app/providers.tsx"
+<WylletProvider auth={auth}>{children}</WylletProvider>
+```
+
+Send only the message and signature to the server. The server reads the address and chain from the signed message, not from the request.
+
+## Server
+
+A sketch with Next.js App Router route handlers and `viem/siwe`. `verifySiweMessage` checks the message fields (domain, nonce, address, time) and the signature. Because it runs through a public client, it also supports smart contract accounts.
+
+The session helpers are placeholders. Back them with your session library or an encrypted, signed cookie.
+
+```ts title="lib/session.ts"
+import type { Address } from 'viem'
+
+export declare function createSession(address: Address): Promise<void>
+export declare function readSession(): Promise<{ address: Address } | null>
+export declare function destroySession(): Promise<void>
+```
+
+```ts title="app/api/siwe/nonce/route.ts"
+import { cookies } from 'next/headers'
+import { generateSiweNonce } from 'viem/siwe'
+
+export async function GET() {
+  const nonce = generateSiweNonce()
+  const jar = await cookies()
+  jar.set('siwe-nonce', nonce, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: 300 })
+  return new Response(nonce)
+}
+```
+
+```ts title="app/api/siwe/verify/route.ts"
+import { cookies } from 'next/headers'
+import { createPublicClient, http } from 'viem'
+import { base, mainnet } from 'viem/chains'
+import { parseSiweMessage } from 'viem/siwe'
+import { createSession } from '@/lib/session'
+
+// Must equal window.location.host on the client, e.g. 'mydapp.xyz' or 'localhost:3000'.
+const DOMAIN = process.env.SIWE_DOMAIN!
+
+const clients = {
+  [mainnet.id]: createPublicClient({ chain: mainnet, transport: http() }),
+  [base.id]: createPublicClient({ chain: base, transport: http() }),
+}
+
+export async function POST(request: Request) {
+  const { message, signature } = await request.json()
+
+  // A nonce can be used once.
+  const jar = await cookies()
+  const nonce = jar.get('siwe-nonce')?.value
+  jar.delete('siwe-nonce')
+  if (!nonce) return new Response('Missing nonce', { status: 400 })
+
+  const { address, chainId } = parseSiweMessage(message)
+  const client = chainId ? clients[chainId as keyof typeof clients] : undefined
+  if (!address || !client) return new Response('Unsupported chain', { status: 400 })
+
+  const valid = await client.verifySiweMessage({ message, signature, domain: DOMAIN, nonce })
+  if (!valid) return new Response('Invalid signature', { status: 401 })
+
+  await createSession(address)
+  return Response.json({ address })
+}
+```
+
+```ts title="app/api/siwe/session/route.ts"
+import { readSession } from '@/lib/session'
+
+export async function GET() {
+  const session = await readSession()
+  return session ? Response.json({ address: session.address }) : new Response(null, { status: 401 })
+}
+```
+
+```ts title="app/api/siwe/logout/route.ts"
+import { destroySession } from '@/lib/session'
+
+export async function POST() {
+  await destroySession()
+  return new Response(null, { status: 204 })
+}
+```
+
+If you only need EOA support, you can verify with `verifyMessage` from `viem` after checking the parsed nonce and domain yourself. The [playground](/playground) does this in a client-only demo adapter.
+
+<Callout type="warning">
+
+The sign-in step proves wallet ownership to your backend only if the backend checks it. Never treat a client-side `true` as a session.
+
+</Callout>
+
+## Security checklist
+
+- **Verify the nonce on the server.** Issue it server-side, store it in an httpOnly cookie or your session store, accept it once, and expire it quickly.
+- **Check the domain.** Compare the message's domain with your own host, so a signature collected on another site cannot sign in to yours. `verifySiweMessage` does this when you pass `domain`.
+- **Use httpOnly cookies for the session.** Set `secure` and `sameSite`, and keep session tokens out of `localStorage`, where any script on the page can read them.
+- **Trust the message, not the request.** Read the address and chain ID from the parsed message.
+- **End sessions on the server.** `signOut()` should invalidate the session, not just clear a client flag.
+
+## useWylletAuth
+
+```tsx
+import { useWylletAuth } from 'wyllet'
+
+function AuthStatus() {
+  const { enabled, status, signIn, signOut } = useWylletAuth()
+  if (!enabled) return null
+  if (status === 'authenticated') return <button onClick={signOut}>Sign out</button>
+  return <button onClick={(e) => signIn({ anchor: e.currentTarget })}>Sign in</button>
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `enabled` | `boolean` | `true` when an `auth` adapter is set |
+| `status` | `'loading' \| 'unauthenticated' \| 'authenticated'` | For the connected account. `'loading'` while `getSession()` resolves |
+| `signIn` | `(options?: OpenOptions) => void` | Opens the panel at the sign-in step, connecting first if needed |
+| `signOut` | `() => Promise<void>` | Calls the adapter's `signOut()` and clears the session |
+
+`useWyllet()` also returns `authStatus`, which is the same status, or `undefined` when no adapter is set.
+
+## Gating content
+
+[ConnectGate](/docs/connect-gate) renders its children only when the user is signed in, when an adapter is set. Pass `requireAuth={false}` to gate on the connection alone.

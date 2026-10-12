@@ -1,0 +1,96 @@
+`ConnectGate` renders its children only when the user is ready: connected, on a supported network, and signed in when you use [SIWE](/docs/siwe). Otherwise it shows a prompt with a button that opens the right step of the panel.
+
+```tsx
+import { ConnectGate } from 'wyllet'
+
+export function VaultPage() {
+  return (
+    <ConnectGate description="Connect a wallet to open the vault.">
+      <Vault />
+    </ConnectGate>
+  )
+}
+```
+
+It must be rendered inside `WylletProvider`.
+
+## Props
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | | Content shown when every requirement is met |
+| `requireSupportedChain` | `boolean` | `true` | Also require a chain that is in your config |
+| `requireAuth` | `boolean` | `true` | Also require a SIWE session. Only applies when an `auth` adapter is set |
+| `fallback` | `ReactNode \| ((reason: GateReason) => ReactNode)` | | Replaces the default prompt |
+| `title` | `ReactNode` | "Connect to continue" | Title of the default prompt when disconnected |
+| `description` | `ReactNode` | "This area needs a connected wallet." | Body of the default prompt when disconnected |
+| `className` | `string` | | Extra class name on the default prompt |
+
+`title` and `description` only change the disconnected prompt. The wrong-network and sign-in prompts use their own text from the [messages](/docs/i18n) object.
+
+## Reasons
+
+The gate checks requirements in order and stops at the first one that fails. The result is a `GateReason`:
+
+| Reason | When | Default prompt button |
+| --- | --- | --- |
+| `'disconnected'` | No wallet is connected | **Connect** opens the connect panel |
+| `'wrongNetwork'` | Connected to a chain that is not in your config, and `requireSupportedChain` is `true` | **Networks** opens the account panel on the Networks tab |
+| `'unauthenticated'` | An auth adapter is set, `requireAuth` is `true`, and the connected account has no session | **Verify** opens the sign-in step |
+
+The prompt's button anchors the panel to itself, so the [popover presentation](/docs/presentations) opens next to it.
+
+While the adapter's `getSession()` is still resolving, the gate treats the user as not signed in and shows the sign-in prompt.
+
+## Custom fallback
+
+Pass a node to show the same fallback for every reason:
+
+```tsx
+<ConnectGate fallback={<p>Connect your wallet to see your positions.</p>}>
+  <Positions />
+</ConnectGate>
+```
+
+Or pass a function to handle each reason yourself:
+
+```tsx
+import { ConnectGate, useWyllet, type GateReason } from 'wyllet'
+
+function Prompt({ reason }: { reason: GateReason }) {
+  const { openConnect, openTab } = useWyllet()
+  if (reason === 'wrongNetwork') return <button onClick={() => openTab('networks')}>Switch network</button>
+  if (reason === 'unauthenticated') return <button onClick={() => openConnect()}>Sign in</button>
+  return <button onClick={() => openConnect()}>Connect wallet</button>
+}
+
+<ConnectGate fallback={(reason) => <Prompt reason={reason} />}>
+  <Dashboard />
+</ConnectGate>
+```
+
+Opening the connect panel while connected but not signed in goes straight to the sign-in step.
+
+## Loosening requirements
+
+```tsx
+// Connected is enough, on any chain, signed in or not.
+<ConnectGate requireSupportedChain={false} requireAuth={false}>
+  <Profile />
+</ConnectGate>
+```
+
+## Server rendering
+
+The wallet connection only exists in the browser, so `ConnectGate` never renders its children on the server or during the first client render. Until it mounts:
+
+- With a `fallback`, it renders the fallback.
+- Without one, it renders the default prompt with `visibility: hidden`, so the space is reserved and nothing flashes.
+
+After mounting, it renders the children or the prompt for the current state. This keeps server and client markup the same and avoids hydration errors in [Next.js](/docs/nextjs).
+
+<Callout>
+
+`ConnectGate` hides UI. It does not protect data. Check the session on your server before returning anything private.
+
+</Callout>

@@ -1,0 +1,129 @@
+Every string in Wyllet's interface comes from a messages object. Pass a partial object to the `messages` prop to rename a few labels or to translate the whole interface.
+
+## Renaming strings
+
+Pass only the keys you want to change. Every other key keeps its English default.
+
+```tsx
+<WylletProvider
+  messages={{
+    connect: 'Sign in',
+    connectTo: 'Sign in to {app}',
+    disconnect: 'Log out',
+  }}
+>
+```
+
+The `label` prop on `<WylletButton>` overrides the button's disconnected text for that one button, without changing `connect` elsewhere.
+
+## The en object
+
+The English strings are exported as `en`, and their type as `Messages`. Use them as the reference list of keys, or as a base for your own translation.
+
+```ts
+import { en, type Messages } from 'wyllet'
+
+console.log(Object.keys(en)) // every key Wyllet uses
+```
+
+Typing a translation as `Partial<Messages>` gives you autocomplete and catches misspelled keys. Typing it as `Messages` makes TypeScript list any key you have not translated yet.
+
+## Placeholders
+
+Some strings contain placeholders in curly braces, such as `{name}`. Wyllet replaces them with the actual value when it renders the string. Keep the placeholder in your translation, in whatever position the sentence needs.
+
+| Placeholder | Value | Keys |
+| --- | --- | --- |
+| `{app}` | Your app name | `connectTo` |
+| `{name}` | A wallet name | `continueWith`, `requesting`, `openWallet`, `scanWith`, `getWallet`, `getWalletShort`, `getWalletDescription`, `activityConnected` |
+| `{name}` | The shortened address | `connectedAs` |
+| `{name}` | A chain name | `activitySwitched` |
+| `{network}` | The current chain name | `noTokens`, `receiveNote`, `lookingUpToken`, `notAToken` |
+| `{symbol}` | A token symbol | `tokenExists`, `importAction`, `tokenImported` |
+| `{query}` | The search text | `noWalletsFound`, `directoryEmpty` |
+| `{count}` | Number of wallets in the directory | `directorySearch` |
+| `{n}` | Minutes or hours | `minutesAgo`, `hoursAgo` |
+| `{terms}`, `{privacy}` | Links built from the `terms` and `privacy` strings | `termsNotice` |
+
+`termsNotice` is shown only when `appInfo.termsUrl` and `appInfo.privacyUrl` are both set. Wyllet turns `{terms}` and `{privacy}` into links labeled with your `terms` and `privacy` strings.
+
+A placeholder with no value is left in the text as written.
+
+## A Spanish example
+
+A partial translation that covers the button, the main connect screens and the account panel:
+
+```ts title="i18n/es.ts"
+import type { Messages } from 'wyllet'
+
+export const es: Partial<Messages> = {
+  // Button
+  connect: 'Conectar',
+  connecting: 'Conectando',
+  verify: 'Verificar',
+  wrongNetwork: 'Red incorrecta',
+  close: 'Cerrar',
+  back: 'Atrás',
+
+  // Connect panel
+  connectTo: 'Conectar a {app}',
+  continueWith: 'Continuar con {name}',
+  lastUsed: 'Último usado',
+  detected: 'Detectadas',
+  allWallets: 'Todas las billeteras',
+  searchWallets: 'Buscar billeteras…',
+  noWalletsFound: 'Nada coincide con “{query}”',
+  scanWithPhone: 'Escanear con el móvil',
+  noWallet: 'No tengo una billetera',
+
+  // Connecting
+  requesting: 'Esperando a {name}',
+  confirmInWallet: 'Aprueba la solicitud de conexión en tu billetera para continuar.',
+  requestRejected: 'Solicitud rechazada',
+  tryAgain: 'Reintentar',
+  connected: 'Conectado',
+
+  // Account panel
+  copyAddress: 'Copiar',
+  receive: 'Recibir',
+  explorer: 'Explorador',
+  disconnect: 'Desconectar',
+  tabTokens: 'Tokens',
+  tabActivity: 'Actividad',
+  tabNetworks: 'Redes',
+  noTokens: 'No hay saldos de tokens en {network}.',
+  noActivity: 'Tu actividad aparecerá aquí.',
+  minutesAgo: 'hace {n} min',
+  hoursAgo: 'hace {n} h',
+}
+```
+
+```tsx title="providers.tsx"
+import { es } from './i18n/es'
+
+<WylletProvider messages={es}>{children}</WylletProvider>
+```
+
+Keys you leave out fall back to English, so you can translate incrementally.
+
+## Switching language at runtime
+
+`messages` is a regular prop, so switching language is a matter of passing a different object:
+
+```tsx
+import { es } from './i18n/es'
+
+const translations = { en: undefined, es }
+
+<WylletProvider messages={translations[locale]}>{children}</WylletProvider>
+```
+
+Define translation objects outside your components, as above, so the same object is passed on every render.
+
+Entries in the activity timeline store their text when they are created. Changing the language later does not rewrite entries that already exist.
+
+## Related
+
+- [WylletProvider](/docs/provider)
+- [WylletButton](/docs/wyllet-button)
+- [Activity](/docs/activity)

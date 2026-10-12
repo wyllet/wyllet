@@ -1,0 +1,97 @@
+While testing Wyllet on phones, we kept hitting the same bug. We'd tap **WalletConnect**, expecting to pick a wallet, and the phone would open Trust Wallet. Every time. Not because anything in Wyllet asked for Trust Wallet, but because of how a bare WalletConnect link works on a phone. This post explains the problem and the fix that shipped in 1.0: the **All wallets** directory, with an app link for each wallet.
+
+## What a bare WalletConnect link does
+
+A WalletConnect session starts with a pairing URI that looks like this:
+
+```text
+wc:7f3a…@2?relay-protocol=irn&symKey=9c1e…&expiryTimestamp=…
+```
+
+On desktop, that URI goes into a QR code and the user scans it from inside their wallet app. The wallet they scan with is the wallet that connects, so there's no ambiguity.
+
+On a phone there's no second device to scan with, so a connector opens the URI as a link. The operating system decides which app handles the `wc:` scheme, and many wallet apps register for it. In our testing, whichever installed wallet had claimed the scheme got the link, and on our test devices that was Trust Wallet every time, regardless of which wallet we meant to use.
+
+Scanning the desktop QR code with the phone's camera app has the same problem. The camera reads a `wc:` link and hands it to the same default app. That's why Wyllet's QR screen says scanning with the camera opens your default wallet app, and asks users to scan from inside their wallet instead.
+
+So a plain "WalletConnect" button on mobile really means "open whichever wallet the OS picks". When the All wallets directory is turned off, Wyllet labels that option for what it is on phones: **Other wallet app**, with the note "Opens your default wallet app".
+
+## The fix: link to the wallet, not the protocol
+
+Wallets that support WalletConnect publish their own links that accept a pairing URI: a universal link (an `https://` URL the wallet's app claims) and often a custom scheme. Open one of those and you get that wallet, no matter what else is installed. Wyllet's built-in presets already did this, for example MetaMask's `https://metamask.app.link/wc?uri=…`. The question was how to offer the same for every wallet, not just the handful we ship presets for.
+
+The answer is WalletConnect's wallet registry. Wallets submit their own listing there: name, logo, supported chains and mobile links. With a WalletConnect project id, Wyllet turns the WalletConnect option into **All wallets**, a searchable grid of about 570 wallets from the registry, filtered to EVM wallets, each with its official logo.
+
+## Building the links
+
+We format links the same way Reown's own modal does, so every registry wallet receives the link its developers expect. The universal link is preferred, then the native scheme:
+
+```ts title="packages/wyllet/src/directory/directory.ts"
+export function directoryDeepLink(wallet: Pick<DirectoryWallet, 'mobile'>, uri: string): string | undefined {
+  const encoded = encodeURIComponent(uri)
+  const { universal, native } = wallet.mobile
+  if (universal) return `${universal.endsWith('/') ? universal : `${universal}/`}wc?uri=${encoded}`
+  if (native) {
+    let base = native.includes('://') ? native : `${native.replaceAll('/', '').replaceAll(':', '')}://`
+    if (!base.endsWith('/')) base = `${base}/`
+    return `${base}wc?uri=${encoded}`
+  }
+  return undefined
+}
+```
+
+Registry entries aren't perfectly uniform. Some universal links end with a slash and some don't, and some native schemes are listed as `trust://` while others are a bare `rainbow`. The function normalizes both, and a unit test pins the exact output for each shape.
+
+## What happens when a user picks a wallet
+
+| Situation | What Wyllet does |
+| --- | --- |
+| The wallet's browser extension is installed (its `rdns` matches an EIP-6963 announcement) | Connects to the extension directly |
+| Desktop | Shows a QR code with the wallet's logo in the middle, to scan from inside that wallet's app |
+| Phone, wallet has a mobile link | Starts a WalletConnect session and opens the wallet's own link |
+| Phone, wallet has no mobile link | Shows the wallet's install screen instead of a bare `wc:` link |
+
+The last row matters. A wallet without a mobile link can't be opened directly, and falling back to a bare `wc:` link would bring back the original bug by opening some other wallet. So Wyllet shows the wallet's install and info links instead. For example, at the time of our testing the registry listed "Base (formerly Coinbase Wallet)" without a mobile link, so on a phone it goes to the install screen.
+
+On desktop, the directory also offers **Use a generic QR code** for wallets that aren't listed.
+
+## How we tested it
+
+We tested the generated links on real wallets:
+
+- **MetaMask** through `metamask.app.link`
+- **OKX Wallet** through its `okex://` scheme
+- **Trust Wallet** through `link.trustwallet.com`
+- **Rainbow** through `rnbwapp.com`
+
+Each opened the intended app with the pairing request.
+
+We also ran an end-to-end session against a simulated wallet built with `@walletconnect/sign-client`. The simulated wallet paired using the URI Wyllet produced, approved the session, signed a message, and then disconnected from the wallet side.
+
+The automated test suite covers the directory itself with a mocked registry: deep-link formatting, filtering out non-EVM wallets and listings without a logo, paging with **Show more**, search, and retrying after a failed request.
+
+## Privacy and performance
+
+The directory is the only network request Wyllet makes on its own, so we kept it as small as we could.
+
+- **Fetched only when opened.** Nothing is requested until the user taps **All wallets**.
+- **Paged.** Wallets load 40 at a time. Search is debounced and queries the registry directly.
+- **Cached for the session.** Each page and search result is cached in memory, so going back and forth doesn't refetch.
+- **Failures aren't cached.** If a request fails, **Retry** really retries.
+- **Logos load lazily** from the registry as tiles scroll into view.
+
+The registry is the same WalletConnect service your WalletConnect connections already depend on. If you'd rather not use it, turn it off:
+
+```tsx
+<WylletProvider appearance={{ walletDirectory: false }} />
+```
+
+With the directory off, phones see the **Other wallet app** option described above, and the wallets you configured with their own `mobileUri` still open the right app.
+
+## Takeaways
+
+- On mobile, a bare `wc:` link is a request to the operating system, not to a wallet. Expect it to open whatever app claimed the scheme.
+- Open a specific wallet with that wallet's own link. Prefer universal links, and format them the way the wallet expects.
+- When you can't build a specific link, don't fall back to the generic one. Send the user somewhere useful instead.
+
+To set it up, add a WalletConnect project id to `getDefaultConfig` and install `@walletconnect/ethereum-provider`. The [All wallets](/docs/all-wallets) and [WalletConnect](/docs/walletconnect) docs cover the details, and you can try the directory in the [playground](/playground).

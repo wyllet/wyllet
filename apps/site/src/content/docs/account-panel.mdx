@@ -1,0 +1,114 @@
+Once a user is connected, the panel shows their account: who they are, quick actions, and tabs for tokens, activity and networks. It opens when they click the connected [WylletButton](/docs/wyllet-button), or when you open it from code.
+
+## Layout
+
+From top to bottom, the account view has:
+
+- A header with the current network chip and a close button. Clicking the chip jumps to the Networks tab.
+- The account summary, or the identity card when `identityCard` is on.
+- Quick actions: Receive, Explorer and Disconnect (plus Copy with the identity card).
+- The tabs set by `accountTabs`. Only the tab content scrolls. The summary and tabs stay in place.
+- A "Powered by Wyllet" badge, unless `appearance.branding` is `false`.
+
+## Account summary
+
+By default the top of the panel is a compact summary: the user's avatar, their ENS name or shortened address, and their native balance on the current chain. Clicking the name copies the full address.
+
+ENS names and avatars are resolved on Ethereum mainnet. They only load when mainnet is in your config and the `ens` prop is not `false`.
+
+## Identity card
+
+Set `appearance.identityCard` to replace the summary with a generative holographic card. Its colors are derived from the address, so every address gets its own card. The card shows the avatar, the current network, the native balance, the ENS name when there is one, and the shortened address.
+
+```tsx
+<WylletProvider appearance={{ identityCard: true, cardTilt: true }}>
+  {children}
+</WylletProvider>
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `identityCard` | `boolean` | `false` | Show the identity card instead of the compact summary |
+| `cardTilt` | `boolean` | `true` | 3D tilt and a light sheen that follow the pointer |
+
+Tilt is not applied to touch input, and it is off when `appearance.disableAnimations` is `true`. Add classes to the card with the `identityCard` slot in [class names](/docs/class-names).
+
+## Quick actions
+
+| Action | What it does |
+| --- | --- |
+| Copy | Copies the address. Shown as a button with the identity card. In the compact summary, click the name instead |
+| Receive | Opens a QR code of the user's address, the full address, a copy button and a note to only send assets on the current network |
+| Explorer | Opens the address on the current chain's block explorer. Hidden when the chain has no explorer |
+| Disconnect | Disconnects the wallet and closes the panel. With an [auth adapter](/docs/siwe), it also signs the user out |
+
+## Tabs
+
+`appearance.accountTabs` sets which tabs appear and in what order. The default is all three.
+
+```tsx
+<WylletProvider appearance={{ accountTabs: ['activity', 'tokens'] }}>
+  {children}
+</WylletProvider>
+```
+
+Pass an empty array to hide the tabs and show only the summary and quick actions.
+
+### Tokens
+
+The native balance followed by your token list for the connected chain, with balances read onchain. See [Tokens](/docs/tokens) for lists, pinning, sorting, user import and the **Add to wallet** button.
+
+### Activity
+
+The account's timeline: transactions, connects, disconnects, network switches, sign-ins and your own entries, grouped by day. Transaction entries link to the block explorer. **Clear** removes the current account's entries. See [Activity and transactions](/docs/activity).
+
+### Networks
+
+A grid of your configured chains, arranged by `chainOrder`. The current chain is checked. Clicking another chain asks the wallet to switch, and the panel shows "Approve in wallet" while it waits. If the wallet cannot switch, the tab says so. Testnets get a Testnet tag.
+
+Above the grid, a live gas price for the current chain is shown in gwei. It refreshes every 12 seconds.
+
+See [Chains](/docs/chains) for ordering, icons and how wallets add unknown networks.
+
+## Wrong network
+
+When the wallet is on a chain that is not in your config:
+
+- The button shows "Wrong network". Clicking it opens the account panel on the Networks tab.
+- The header's network chip shows a warning and "Wrong network".
+- The panel switches to the Networks tab (unless `accountTabs` is empty), with the message "This app doesn't support your current network. Pick one below."
+
+Use [ConnectGate](/docs/connect-gate) to hide parts of your own UI until the user is on a supported network.
+
+## Opening the panel from code
+
+`useWyllet()` controls the panel from anywhere inside `WylletProvider`.
+
+```tsx
+import { useWyllet } from 'wyllet'
+
+function Toolbar() {
+  const { openAccount, openTab, isConnected } = useWyllet()
+  return (
+    <>
+      <button disabled={!isConnected} onClick={(e) => openTab('activity', { anchor: e.currentTarget })}>
+        Activity
+      </button>
+      <button disabled={!isConnected} onClick={() => openAccount({ tab: 'networks' })}>
+        Networks
+      </button>
+    </>
+  )
+}
+```
+
+| Function | Description |
+| --- | --- |
+| `open(view?, options?)` | Opens `'account'` when connected and `'connect'` otherwise, unless you pass a view |
+| `openAccount(options?)` | Opens the account view |
+| `openTab(tab, options?)` | Opens the account view on `'tokens'`, `'activity'` or `'networks'` |
+| `close()` | Closes the panel |
+
+`options` is `{ anchor?: Element | null; tab?: AccountTab }`. Pass `anchor` so the [popover presentation](/docs/presentations) anchors to your element. If you ask for a tab that is not in `accountTabs`, the first configured tab is shown. The account view only renders while a wallet is connected.
+
+See [Hooks](/docs/hooks) for everything `useWyllet()` returns.

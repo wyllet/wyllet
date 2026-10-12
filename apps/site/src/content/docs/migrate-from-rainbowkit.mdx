@@ -1,0 +1,270 @@
+RainbowKit and Wyllet solve the same problem on the same foundation: both sit on top of wagmi, viem and react-query, and both give you a provider, a connect button and a config helper. Most of a migration is renaming. This guide maps RainbowKit's concepts to Wyllet's, walks through the switch step by step, and lists what works differently.
+
+<Callout>
+
+Wyllet requires wagmi v3 and viem 2. If your app is still on an older wagmi major, upgrade wagmi first using wagmi's own migration guide, then switch the connect layer.
+
+</Callout>
+
+## Concept map
+
+| RainbowKit | Wyllet |
+| --- | --- |
+| `RainbowKitProvider` | `WylletProvider` |
+| `ConnectButton` | `WylletButton` |
+| `ConnectButton.Custom` | `useWylletButton()` |
+| `getDefaultConfig` | `getDefaultConfig` (same idea, `walletConnectProjectId` instead of `projectId`) |
+| `darkTheme()` / `lightTheme()` | `obsidianTheme()` / `porcelainTheme()` (also `auroraTheme()`, `terminalTheme()`) |
+| `useConnectModal().openConnectModal` | `useWyllet().openConnect` |
+| `useAccountModal().openAccountModal` | `useWyllet().openAccount` |
+| `useChainModal().openChainModal` | `useWyllet().openTab('networks')` |
+| `RainbowKitAuthenticationProvider` + adapter | `auth` prop on `WylletProvider` |
+| Custom wallet objects | `Wallet` objects |
+| Wallet groups (`groupName`) | A flat `wallets` array |
+| `useAddRecentTransaction` | `useWylletActivity().addTransaction` |
+| `import '@rainbow-me/rainbowkit/styles.css'` | Not needed (styles are injected) |
+
+## Step by step
+
+### 1. Swap the packages
+
+```bash
+npm uninstall @rainbow-me/rainbowkit
+npm install wyllet
+
+# Only if you use WalletConnect (QR codes and mobile wallets):
+npm install @walletconnect/ethereum-provider
+```
+
+Wyllet's peers are `react`, `react-dom`, `wagmi`, `viem` and `@tanstack/react-query`, which your app already has. `@walletconnect/ethereum-provider` is an optional peer you install and pin yourself.
+
+### 2. Update the config
+
+Wyllet's `getDefaultConfig` takes the same kind of input and returns a wagmi config. Rename `projectId` to `walletConnectProjectId`. Other wagmi `createConfig` options, such as `ssr`, pass straight through.
+
+```ts title="Before"
+import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { base, mainnet } from 'wagmi/chains'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  projectId: 'YOUR_PROJECT_ID',
+  chains: [mainnet, base],
+  ssr: true,
+})
+```
+
+```ts title="After"
+import { getDefaultConfig } from 'wyllet'
+import { base, mainnet } from 'viem/chains'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  walletConnectProjectId: 'YOUR_PROJECT_ID',
+  chains: [mainnet, base],
+  ssr: true,
+})
+```
+
+Wyllet's `getDefaultConfig` also accepts `appDescription`, `appUrl`, `appIcon`, `transports`, `wallets` and extra `connectors`. See [Configuration](/docs/configuration).
+
+### 3. Replace the provider
+
+Keep `WagmiProvider` and `QueryClientProvider` as they are. Replace `RainbowKitProvider` with `WylletProvider` and delete the RainbowKit stylesheet import.
+
+```tsx title="app/providers.tsx"
+'use client'
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WagmiProvider } from 'wagmi'
+import { WylletProvider } from 'wyllet'
+import { config } from './wagmi'
+
+const queryClient = new QueryClient()
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <WylletProvider>{children}</WylletProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
+```
+
+A few RainbowKit provider props have direct counterparts:
+
+| RainbowKit prop | Wyllet |
+| --- | --- |
+| `theme` | `theme` (a theme, or a `{ light, dark }` pair) |
+| `appInfo.appName` | `appName` in `getDefaultConfig`, or `appInfo.name` on the provider |
+| `appInfo.learnMoreUrl` | `appInfo.learnMoreUrl` |
+| `appInfo.disclaimer` | `disclaimer` |
+| `avatar` | `avatar` (receives `address`, `ensImage` and `size`) |
+| `locale` | `messages` (override any string; see [Translations](/docs/i18n)) |
+| `initialChain` | The first chain in your config is the default |
+
+### 4. Replace the button
+
+```tsx
+// Before
+<ConnectButton label="Sign in" />
+
+// After
+<WylletButton label="Sign in" />
+```
+
+`WylletButton` has a `display` prop instead of `accountStatus` and `showBalance`: `'full'` shows the avatar, name and balance, `'compact'` the avatar and name, and `'avatar'` the avatar only. The network appears as a badge on the avatar, so there is no separate chain button. See [WylletButton](/docs/wyllet-button).
+
+### 5. Replace custom buttons
+
+`ConnectButton.Custom` is a render prop. Wyllet uses a hook instead, so you can call it in any component.
+
+```tsx
+import { useWylletButton } from 'wyllet'
+
+function CustomButton() {
+  const { mounted, account, chain, openConnect, openAccount } = useWylletButton()
+  if (!mounted) return null
+  if (!account) return <button onClick={(e) => openConnect(e.currentTarget)}>Connect</button>
+  if (chain?.unsupported) return <button onClick={(e) => openAccount(e.currentTarget, 'networks')}>Wrong network</button>
+  return <button onClick={(e) => openAccount(e.currentTarget)}>{account.displayName}</button>
+}
+```
+
+| `ConnectButton.Custom` | `useWylletButton()` |
+| --- | --- |
+| `mounted` | `mounted` |
+| `account.displayName` | `account.displayName` |
+| `account.displayBalance` | `account.balance.formatted` and `account.balance.symbol` |
+| `chain.unsupported` | `chain.unsupported` |
+| `openConnectModal()` | `openConnect(anchor?)` |
+| `openAccountModal()` | `openAccount(anchor?)` |
+| `openChainModal()` | `openAccount(anchor, 'networks')` |
+| `authenticationStatus` | `authStatus` |
+
+Passing the clicked element as `anchor` lets the `popover` presentation position itself next to your button.
+
+### 6. Replace the modal hooks
+
+```tsx
+const { openConnect, openAccount, openTab, close } = useWyllet()
+
+openConnect()          // was openConnectModal()
+openAccount()          // was openAccountModal()
+openTab('networks')    // was openChainModal()
+```
+
+### 7. Move the theme
+
+```tsx
+// Before
+<RainbowKitProvider theme={darkTheme({ accentColor: '#7b3fe4', accentColorForeground: 'white' })} />
+
+// After
+<WylletProvider theme={obsidianTheme({ accentColor: '#7b3fe4', accentColorForeground: 'white' })} />
+```
+
+`accentColor` and `accentColorForeground` keep their names. The other knobs differ: `radius` takes `'sharp' | 'soft' | 'round' | 'pill'`, `overlayBlur` takes `'none' | 'subtle' | 'heavy'`, and `fontFamily` takes any font stack. To follow the OS color scheme, pass a pair:
+
+```tsx
+<WylletProvider theme={{ light: porcelainTheme(), dark: obsidianTheme() }} colorMode="auto" />
+```
+
+Every token is also a CSS variable (such as `--wy-colors-accent`), and the `classNames` prop attaches your own classes to individual elements. See [Theming](/docs/theming) and [Class names](/docs/class-names).
+
+### 8. Move authentication
+
+In RainbowKit you wrap the app in `RainbowKitAuthenticationProvider`, pass an adapter, and supply the authentication `status` yourself. In Wyllet you pass an adapter to the `auth` prop and Wyllet tracks the status.
+
+```tsx
+import type { WylletAuthAdapter } from 'wyllet'
+
+const auth: WylletAuthAdapter = {
+  getNonce: () => fetch('/api/nonce').then((r) => r.text()),
+  verify: ({ message, signature }) =>
+    fetch('/api/verify', { method: 'POST', body: JSON.stringify({ message, signature }) }).then((r) => r.ok),
+  signOut: () => fetch('/api/logout', { method: 'POST' }).then(() => {}),
+  getSession: () => fetch('/api/me').then((r) => (r.ok ? r.json() : null)),
+}
+
+<WylletProvider auth={auth}>{children}</WylletProvider>
+```
+
+- `createMessage` is optional. By default Wyllet builds an EIP-4361 message with `viem/siwe`.
+- `getSession` restores an existing session on page load. Return `{ address }` or `null`.
+- Disconnecting or switching accounts calls `signOut`.
+- Read the status with `useWylletAuth()`.
+
+Your backend nonce and verify endpoints do not need to change. See [Sign-In With Ethereum](/docs/siwe).
+
+### 9. Move the wallet list
+
+RainbowKit groups wallets under a `groupName`. Wyllet takes one ordered array of called presets, and groups wallets in the UI on its own: detected and recently used first, then the rest.
+
+```ts title="Before"
+wallets: [{ groupName: 'Recommended', wallets: [metaMaskWallet, rainbowWallet, walletConnectWallet] }]
+```
+
+```ts title="After"
+import { metaMaskWallet, rainbowWallet, walletConnectWallet } from 'wyllet'
+
+wallets: [metaMaskWallet(), rainbowWallet(), walletConnectWallet()]
+```
+
+Wallets with `featured: false` are listed in a lower group. Installed browser wallets you did not list are still detected through EIP-6963. Wyllet bundles official artwork only for its default wallets (MetaMask, Phantom, Rabby, OKX and WalletConnect). `coinbaseWallet()`, `rainbowWallet()` and `trustWallet()` show a neutral monogram unless the extension is installed or you pass an icon through `overrides`. See [Wallets](/docs/wallets).
+
+### 10. Port custom wallets
+
+A custom wallet is a plain object. The main renames are `iconUrl` to `icon` and the mobile WalletConnect link to `walletConnect.mobileUri`.
+
+```ts
+import type { Wallet } from 'wyllet'
+
+const acme: Wallet = {
+  id: 'acme',
+  name: 'Acme',
+  icon: 'https://acme.xyz/icon.png',
+  iconBackground: '#ffffff',
+  rdns: 'xyz.acme',
+  walletConnect: { mobileUri: (uri) => `acme://wc?uri=${encodeURIComponent(uri)}` },
+  downloadUrls: { browserExtension: 'https://acme.xyz/download', ios: '…', android: '…' },
+}
+```
+
+To give a wallet a dedicated wagmi connector, set `createConnector` to a function that takes no arguments and returns a wagmi `CreateConnectorFn`.
+
+### 11. Move recent transactions
+
+```tsx
+const { addTransaction } = useWylletActivity()
+
+const hash = await writeContractAsync({ /* ... */ })
+addTransaction({ hash, description: 'Mint 1 NFT' })
+```
+
+There is no `showRecentTransactions` flag. Transactions appear in the account panel's Activity tab, with pending and confirmed toasts. See [Activity and transactions](/docs/activity).
+
+## What works differently
+
+- **Presentations.** The panel opens as a side drawer by default. Set `appearance.presentation` to `'popover'` to anchor it to the button, or `'modal'` for a centered dialog. Phones get a draggable bottom sheet. See [Presentations](/docs/presentations).
+- **Activity.** The Activity tab records connects, disconnects, network switches and sign-ins as well as transactions, and you can add your own entries with `log`. Pending transactions are watched again after a reload.
+- **Toasts.** `useWylletToast()` gives you themed, promise-aware notifications that match the panel. See [Toasts](/docs/toasts).
+- **Tokens.** The account panel has a Tokens tab with balances for a token list you define in code, with pinning, sorting and optional user import. See [Tokens](/docs/tokens).
+- **Networks.** Switching networks happens in the account panel's Networks tab, which also shows the live gas price and a wrong-network banner.
+- **Gating.** `ConnectGate` renders content only when the user is connected, on a supported network and signed in. See [ConnectGate](/docs/connect-gate).
+- **All wallets.** With a WalletConnect project id, the WalletConnect option opens a searchable directory of wallets from the WalletConnect registry, and each opens its own app on phones. See [All wallets](/docs/all-wallets).
+- **Styles.** Wyllet injects its CSS, so there is no stylesheet import. Set `injectStyles={false}` and import `wyllet/styles.css` if you want to load it yourself.
+- **Keyboard.** Set `shortcut="mod+k"` to toggle the panel from the keyboard. In the wallet list, arrow keys move and number keys pick a wallet.
+- **Dependencies.** Wyllet has no third-party runtime dependencies. See [Security](/docs/security).
+
+## Checklist
+
+- `@rainbow-me/rainbowkit` removed from `package.json` and the lockfile.
+- The RainbowKit stylesheet import removed.
+- `projectId` renamed to `walletConnectProjectId`.
+- `@walletconnect/ethereum-provider` installed if you use WalletConnect.
+- Every `ConnectButton`, `ConnectButton.Custom` and modal hook replaced.
+- The auth adapter moved to the `auth` prop, with `getSession` if you restore sessions.
+- Your app still connects, switches networks and signs in. Try it in the [playground](/playground) first if you want to compare settings.

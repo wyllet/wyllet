@@ -1,0 +1,102 @@
+WalletConnect lets users connect a mobile wallet by scanning a QR code on desktop, or by opening the wallet app on a phone. It is optional. Without it, Wyllet still connects browser extensions and any dedicated connectors.
+
+## Setup
+
+### 1. Get a project ID
+
+Create a free project at [cloud.reown.com](https://cloud.reown.com) and copy its project ID.
+
+### 2. Install the provider
+
+`@walletconnect/ethereum-provider` is an optional peer dependency, so you choose and pin its version.
+
+```bash
+pnpm add @walletconnect/ethereum-provider
+```
+
+### 3. Pass the project ID
+
+```tsx title="wagmi.ts"
+import { getDefaultConfig } from 'wyllet'
+import { base, mainnet } from 'viem/chains'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  appDescription: 'Trade on Base',
+  appIcon: 'https://mydapp.xyz/icon.png',
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID,
+  chains: [mainnet, base],
+})
+```
+
+`getDefaultConfig` adds wagmi's `walletConnect` connector with Wyllet's own QR screen (`showQrModal: false`). Wallets see your `appName`, `appDescription` (defaults to `appName`), `appUrl` (defaults to `window.location.origin`) and `appIcon` when they connect.
+
+The connector is only added when at least one wallet in your list supports WalletConnect. `defaultWallets()` includes `walletConnectWallet()`, so the default list always does.
+
+### 4. Allow your domains
+
+In Reown Cloud, add every domain that serves your dApp (production, staging and preview hosts) to the project's allowed domains. Connections from a domain that is not on the list fail, even though the same code works locally.
+
+## Hand-written configs
+
+If you create the wagmi config yourself, add the connector and pass the project ID to the provider so Wyllet can open [All wallets](/docs/all-wallets).
+
+```tsx
+import { createConfig, http, injected } from 'wagmi'
+import { walletConnect } from 'wagmi/connectors'
+import { mainnet } from 'viem/chains'
+
+const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID!
+
+const config = createConfig({
+  chains: [mainnet],
+  transports: { [mainnet.id]: http() },
+  connectors: [
+    injected(),
+    walletConnect({
+      projectId,
+      showQrModal: false,
+      metadata: { name: 'My dApp', description: 'My dApp', url: 'https://mydapp.xyz', icons: [] },
+    }),
+  ],
+})
+
+// Inside WagmiProvider and QueryClientProvider:
+<WylletProvider walletConnectProjectId={projectId} appInfo={{ name: 'My dApp' }}>
+  {children}
+</WylletProvider>
+```
+
+Keep `showQrModal: false`, or WalletConnect's own modal opens on top of Wyllet's.
+
+## How connections work
+
+### QR codes on desktop
+
+On desktop, picking a WalletConnect wallet shows a QR code. When the user picked a specific wallet such as MetaMask, the code carries that wallet's logo and the screen says to open that app and tap its scan button. The footer's **Scan with phone** button and the generic WalletConnect option show a plain code for any wallet. Every QR screen has a **Copy link** button.
+
+### Mobile links
+
+On a phone there is nothing to scan. Wyllet requests a WalletConnect URI and sends the user to the wallet with the link from that wallet's `mobileUri`. For example, `metaMaskWallet()` opens `https://metamask.app.link/wc?uri=` followed by the encoded URI. The connecting screen also shows an **Open** button with the same link, in case the browser blocked the redirect.
+
+The plain `walletConnectWallet()` option has no app of its own, so its mobile link is the bare `wc:` URI. A bare link opens whichever wallet app the operating system picks, and iOS shows no chooser. That is why, on phones, the plain option is labeled **Other wallet app** with the note "Opens your default wallet app".
+
+[All wallets](/docs/all-wallets) solves this. With a project ID, the WalletConnect option opens the registry directory, where every wallet has its own universal or native link. Picking a wallet there opens that exact app. Wallets with no mobile link show an install screen instead of a bare link.
+
+Inside a wallet's in-app browser, the wallet injects a provider, so Wyllet connects to it directly without WalletConnect.
+
+## Troubleshooting
+
+**The WalletConnect option and "Scan with phone" are missing.** No WalletConnect connector exists. Check that `walletConnectProjectId` is set and not `undefined` at build time, and that at least one wallet in `wallets` has a `walletConnect` field.
+
+**A module-not-found error for `@walletconnect/ethereum-provider`.** Install the package. wagmi's connector loads it when WalletConnect is configured.
+
+**Connecting works locally but fails in production.** Add the production domain to the project's allowed domains in Reown Cloud.
+
+**On a phone, the wrong wallet opens.** The user picked the plain WalletConnect option, which uses a bare `wc:` link. Keep `appearance.walletDirectory` enabled so the option opens All wallets, or list presets with their own app links.
+
+**All wallets does not appear.** With a hand-written config, pass `walletConnectProjectId` to `WylletProvider`. Also check that `appearance.walletDirectory` is not `false`.
+
+**All wallets shows "Couldn't load the wallet list."** The request to `explorer-api.walletconnect.com` failed. Check your Content Security Policy and any network filters, then use **Retry**.
+
+**The QR code keeps loading.** Wyllet is waiting for a URI from WalletConnect. Check the browser console for errors from the WalletConnect provider, such as an invalid project ID.

@@ -7,6 +7,13 @@
     "build": "pnpm --filter wyllet build",
     "dev": "pnpm --filter playground dev",
     "test": "pnpm --filter wyllet test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "dev:site": "pnpm --filter site dev",
+    "build:site": "pnpm --filter site build"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "^0.28.1"
+    }
   }
 }

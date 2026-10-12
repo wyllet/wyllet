@@ -1,0 +1,89 @@
+The `classNames` prop attaches your own class names to specific Wyllet elements. Use it for layout tweaks, utility classes such as Tailwind, or hooks for your own CSS. For colors, radii, fonts and shadows, the [theme](/docs/theming) is usually the better tool.
+
+## Usage
+
+```tsx
+<WylletProvider
+  classNames={{
+    panel: 'my-wallet-panel',
+    island: 'my-connect-button',
+    walletRow: 'my-wallet-row',
+  }}
+>
+```
+
+Your classes are added next to Wyllet's own classes. They do not replace them.
+
+## Slots
+
+| Slot | Element | Wyllet class |
+| --- | --- | --- |
+| `overlay` | The layer behind the panel that dims the page and closes the panel on click. | `wy-overlay` |
+| `panel` | The panel container, in every presentation (drawer, popover, modal and sheet). | `wy-surface` |
+| `island` | The `<WylletButton>`. | `wy-island` |
+| `walletRow` | Each wallet in the connect list. | `wy-row` |
+| `primaryButton` | Primary buttons inside the panel, such as "Try again" after a failed connection, "Sign to verify" in the SIWE step and the import token button. | `wy-btn-primary` |
+| `identityCard` | The holographic identity card, when `appearance.identityCard` is on. | `wy-card` |
+| `toast` | Each toast. | `wy-toast` |
+
+The slot type is exported as `WylletSlot`.
+
+`<WylletButton>` also accepts a `className` prop. It is added after `classNames.island`, so you can style one button differently from the rest.
+
+## Tailwind
+
+Pass utility classes as strings. Tailwind finds them by scanning your source, like any other class.
+
+```tsx
+<WylletProvider
+  classNames={{
+    walletRow: 'hover:translate-x-1',
+    panel: 'border border-white/10',
+  }}
+>
+```
+
+### When a utility does not apply
+
+Wyllet's base styles set some properties on these elements, for example `background`, `border-radius`, `box-shadow` and `font-family` on the panel and the button. A utility that sets the same property competes with Wyllet's rule, which has the same specificity and usually loads after your CSS. In Tailwind v4, utilities also live in a cascade layer, which always loses to Wyllet's unlayered styles. Either way, the utility can end up ignored.
+
+For those properties, you have two options:
+
+- Change the matching theme token instead, such as `colors.background`, `radii.panel`, `shadows.panel` or `fonts.body`. See [Theming](/docs/theming).
+- Mark the utility as important with Tailwind's important modifier.
+
+```tsx
+<WylletProvider
+  classNames={{
+    // Tailwind v4: trailing !
+    panel: 'shadow-2xl!',
+    island: 'font-mono!',
+  }}
+>
+```
+
+In Tailwind v3, the modifier goes at the start instead: `!shadow-2xl`.
+
+Properties Wyllet does not set, such as `translate` on wallet rows or `border` on the panel, apply without the modifier.
+
+## Plain CSS
+
+`classNames` works the same with plain CSS or CSS modules:
+
+```css title="wallet.css"
+.my-wallet-panel {
+  border: 1px solid color-mix(in srgb, var(--wy-colors-accent) 40%, transparent);
+}
+```
+
+Inside these elements, every theme token is available as a `--wy-*` CSS variable, so your styles can follow the active theme. See [CSS variables](/docs/theming#css-variables).
+
+The same specificity rule applies here: properties Wyllet already sets on an element need a more specific selector, such as `.wy-surface.my-wallet-panel`, or a theme token.
+
+The classes in the third column of the slots table are also stable, prefixed with `wy-`, and can be targeted directly from your stylesheet.
+
+## Related
+
+- [Theming](/docs/theming)
+- [WylletButton](/docs/wyllet-button)
+- [WylletProvider](/docs/provider)

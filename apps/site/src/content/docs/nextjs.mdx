@@ -1,0 +1,141 @@
+Wyllet works with the Next.js App Router. You put the providers in a client component, wrap your layout with it, and render the button from any page.
+
+## How it works with server components
+
+The published package starts with a `'use client'` directive, so every Wyllet export is a client module. In practice this means:
+
+- You can render `<WylletButton />` and `<ConnectGate>` from a server component. They become client components automatically.
+- Functions such as `getDefaultConfig()`, `obsidianTheme()` or `withDefaultTokens()` must be called from client modules, such as the providers file below. A server component cannot call functions exported from a client module.
+- The providers themselves (`WagmiProvider`, `QueryClientProvider`, `WylletProvider`) need a client component, because they hold state.
+
+## 1. Add the project ID
+
+Store the WalletConnect project ID in an environment variable with the `NEXT_PUBLIC_` prefix so it is available in the browser.
+
+```bash title=".env.local"
+NEXT_PUBLIC_WC_PROJECT_ID=your_project_id
+```
+
+## 2. Create the config
+
+```ts title="lib/wagmi.ts"
+import { base, mainnet } from 'viem/chains'
+import { getDefaultConfig } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  appUrl: 'https://my-dapp.xyz',
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID,
+  chains: [mainnet, base],
+  ssr: true,
+})
+```
+
+`appUrl` defaults to `window.location.origin`. On the server there is no `window`, so set `appUrl` explicitly when the config is also evaluated during server rendering. The URL is sent to wallets as part of the WalletConnect metadata.
+
+`ssr: true` is a regular wagmi option. `getDefaultConfig()` accepts every wagmi `createConfig()` parameter except `chains`, `transports` and `connectors` (which it builds for you) and passes them through. That includes options such as `ssr` and `storage`.
+
+## 3. Create a providers component
+
+```tsx title="app/providers.tsx"
+'use client'
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState, type ReactNode } from 'react'
+import { WagmiProvider } from 'wagmi'
+import { WylletProvider } from 'wyllet'
+import { config } from '@/lib/wagmi'
+
+export function Providers({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient())
+
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <WylletProvider>{children}</WylletProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
+```
+
+Creating the `QueryClient` inside `useState` keeps one client per browser session and avoids sharing a client between server requests.
+
+## 4. Wrap the root layout
+
+```tsx title="app/layout.tsx"
+import type { ReactNode } from 'react'
+import { Providers } from './providers'
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  )
+}
+```
+
+## 5. Render the button
+
+```tsx title="app/page.tsx"
+import { WylletButton } from 'wyllet'
+
+export default function Page() {
+  return (
+    <header>
+      <WylletButton />
+    </header>
+  )
+}
+```
+
+This page stays a server component. Pass theme objects, appearance options and other non-serializable props on `<WylletProvider>` in `providers.tsx`, not from server components.
+
+## Hydration and SSR
+
+Wallet state only exists in the browser, so Wyllet avoids rendering account details on the server:
+
+- `<WylletButton>` renders a hidden, disabled placeholder until it has mounted on the client. The placeholder keeps its space in the layout, so nothing shifts when the real button appears.
+- `<ConnectGate>` never renders its children before mount. Until then it shows its default prompt hidden, or your `fallback` if you passed one.
+- The panel and toasts render into a portal only on the client.
+
+If you build your own button with `useWylletButton()`, use its `mounted` flag the same way:
+
+```tsx title="components/connect-button.tsx"
+'use client'
+
+import { useWylletButton } from 'wyllet'
+
+export function ConnectButton() {
+  const { mounted, account, open } = useWylletButton()
+
+  if (!mounted) return <button disabled aria-hidden style={{ visibility: 'hidden' }}>Connect</button>
+
+  return (
+    <button onClick={(e) => open(e.currentTarget)}>
+      {account ? account.displayName : 'Connect'}
+    </button>
+  )
+}
+```
+
+See [WylletButton](/docs/wyllet-button) for the full shape of `useWylletButton()`.
+
+## Light and dark mode
+
+With the default theme pair, Wyllet follows the operating system through `prefers-color-scheme`. If your site has its own theme toggle, pass the current mode as `colorMode` from your providers component so Wyllet matches it:
+
+```tsx
+<WylletProvider colorMode={siteTheme}>{children}</WylletProvider>
+```
+
+`siteTheme` here is your own `'light'`, `'dark'` or `'auto'` value. See [Theming](/docs/theming).
+
+## Related
+
+- [Configuration](/docs/configuration)
+- [WylletProvider](/docs/provider)
+- [WalletConnect](/docs/walletconnect)

@@ -1,0 +1,60 @@
+Wyllet is an open-source, MIT-licensed wallet connector for React dApps. It gives your app a connect button, a connect flow and an account panel, and it runs on top of the wagmi and viem setup your dApp already uses.
+
+## What Wyllet is
+
+Most dApps need the same things around a wallet: a way to pick and connect one, a place to see the connected account, a network switcher, and feedback while transactions confirm. Wyllet packages these into one system that you add with a provider and a button.
+
+Wyllet does not replace wagmi. It reads connection state through wagmi hooks and connects wallets through wagmi connectors. Your own code keeps using `useConnection`, `useWriteContract`, `useBalance` and the rest of wagmi as before.
+
+## What it includes
+
+| Piece | What it does |
+| --- | --- |
+| Wallet Island | `<WylletButton>`, one button that is a call to action when disconnected and shows avatar, name, network badge and balance when connected. See [WylletButton](/docs/wyllet-button). |
+| Panel presentations | The connect and account views open as a side `drawer` (the default), an anchored `popover` or a centered `modal`. Phones get a draggable bottom sheet. See [Presentations](/docs/presentations). |
+| Connect flow | Installed wallets are detected through EIP-6963. Other wallets connect through WalletConnect with a QR code on desktop or an app link on phones. Arrow keys, Enter and number keys 1 to 9 pick a wallet, and recent wallets get a one-tap "Continue with" row. |
+| Account panel | Address, copy, receive QR code, explorer link and disconnect, plus Tokens, Activity and Networks tabs. An optional generative identity card can replace the compact summary. See [Account panel](/docs/account-panel). |
+| Chains and tokens in code | You define networks and tokens in code, so every user sees the same curated set. `popularChains`, `customChain()` and `withDefaultTokens()` help. See [Chains](/docs/chains) and [Tokens](/docs/tokens). |
+| Activity | A per-account timeline of connects, network switches, sign-ins, tracked transactions and your own entries. See [Activity](/docs/activity). |
+| Toasts | Themed, promise-aware notifications through `useWylletToast()`. See [Toasts](/docs/toasts). |
+| Sign-In With Ethereum | Pass an auth adapter and a signature step becomes part of the connect flow. See [SIWE](/docs/siwe). |
+| `<ConnectGate>` | Renders its children only when the user is connected, on a supported network and, if you use SIWE, signed in. See [ConnectGate](/docs/connect-gate). |
+| Themes | Four presets (Obsidian, Porcelain, Aurora, Terminal), light and dark pairs, and every design token exposed as a `--wy-*` CSS variable. See [Theming](/docs/theming). |
+| Burner wallet | `burnerWallet()` is an in-browser wallet for local development and demos. See [Wallets](/docs/wallets). |
+
+## How it fits into a wagmi and viem dApp
+
+A Wyllet app has three layers, from the outside in:
+
+1. `<WagmiProvider>` with a wagmi config. You can create the config with Wyllet's `getDefaultConfig()`, which wires up wallet discovery, WalletConnect and your wallet list, or write it yourself with wagmi's `createConfig()`.
+2. `<QueryClientProvider>` from `@tanstack/react-query`, which wagmi requires.
+3. `<WylletProvider>`, which holds the theme, presentation and feature options, and renders the panel and toasts.
+
+Inside the provider you render `<WylletButton />` wherever the connect button belongs, and use Wyllet hooks such as `useWyllet()` when you want to open the panel from your own UI.
+
+```tsx
+<WagmiProvider config={config}>
+  <QueryClientProvider client={queryClient}>
+    <WylletProvider>
+      <WylletButton />
+    </WylletProvider>
+  </QueryClientProvider>
+</WagmiProvider>
+```
+
+## Dependencies
+
+Wyllet has no third-party runtime dependencies. It uses only `react`, `react-dom`, `wagmi`, `viem` and `@tanstack/react-query`, which your dApp already has, and declares them as peer dependencies. The QR code encoder is built in.
+
+WalletConnect support is opt-in. If you set a `walletConnectProjectId`, you install `@walletconnect/ethereum-provider` yourself, so you choose and pin its version.
+
+Wyllet makes no network requests of its own, with one opt-in exception: when WalletConnect is enabled and a user opens **All wallets**, it loads the wallet list and logos from the WalletConnect registry. Set `appearance.walletDirectory` to `false` to turn that off. See [All wallets](/docs/all-wallets).
+
+Styles are injected by the provider, so there is no CSS file to import.
+
+## Next steps
+
+- [Installation](/docs/installation): install the package and its peers.
+- [Quick start](/docs/quick-start): a minimal working app.
+- [Next.js](/docs/nextjs): setup for the App Router.
+- Try every option live in the [playground](/playground).

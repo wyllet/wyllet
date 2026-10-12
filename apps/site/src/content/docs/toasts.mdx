@@ -1,0 +1,105 @@
+Wyllet includes a themed toast system. It is the same one used for transaction updates, so your own notifications match. Toasts render in a portal at the edge of the screen and follow your [theme](/docs/theming).
+
+```tsx
+import { useWylletToast } from 'wyllet'
+
+function SaveButton() {
+  const toast = useWylletToast()
+  return <button onClick={() => toast.success('Saved', { description: 'Your settings were updated.' })}>Save</button>
+}
+```
+
+## The toast API
+
+`useWylletToast()` returns a function with helper methods attached.
+
+| Call | Returns | Description |
+| --- | --- | --- |
+| `toast(options)` | `string` | Show a toast with full `ToastOptions`. Returns its id |
+| `toast.success(title, options?)` | `string` | Success toast |
+| `toast.error(title, options?)` | `string` | Error toast |
+| `toast.loading(title, options?)` | `string` | Loading toast with a spinner. It stays until you update or dismiss it |
+| `toast.update(id, options)` | `void` | Change an existing toast in place. Does nothing if the id is not showing |
+| `toast.dismiss(id?)` | `void` | Dismiss one toast, or all toasts when called without an id |
+| `toast.promise(promise, messages)` | `Promise` | Loading toast that turns into success or error with the promise |
+
+The helpers take the same options as `toast()`, without `title` and `status`.
+
+### Promises
+
+`toast.promise` shows `messages.loading` until the promise settles, then replaces it with `messages.success` or `messages.error`. Both can be functions that receive the resolved value or the error. It returns the promise's value, and rethrows its error, so you can keep using the result.
+
+```tsx
+const receipt = await toast.promise(bridge(amount), {
+  loading: 'Bridging to Base...',
+  success: (r) => `Bridged ${r.amount} ETH`,
+  error: (e) => (e instanceof Error ? e.message : 'Bridge failed'),
+})
+```
+
+### Updating a toast
+
+Pass an `id` to reuse a toast instead of stacking a new one. Calling `toast()` with an id that is already showing updates it.
+
+```tsx
+const id = toast.loading('Uploading...')
+try {
+  await upload(file)
+  toast.update(id, { status: 'success', title: 'Uploaded' })
+} catch {
+  toast.update(id, { status: 'error', title: 'Upload failed' })
+}
+```
+
+## ToastOptions
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `title` | `ReactNode` | | Main text. Required for `toast()` |
+| `description` | `ReactNode` | | Secondary text |
+| `status` | `'info' \| 'success' \| 'error' \| 'loading'` | `'info'` | Icon and color |
+| `duration` | `number` | `4500`, or `7000` for errors | Milliseconds before it closes. `Infinity` keeps it open |
+| `action` | `{ label: ReactNode; href?: string; onClick?: () => void }` | | A button, or a link when `href` is set |
+| `id` | `string` | Generated | Reuse an id to update a toast in place |
+
+Loading toasts never close on their own, whatever the `duration`. Every toast has a close button. An `action` with `href` opens in a new tab.
+
+```tsx
+toast({
+  status: 'success',
+  title: 'Order filled',
+  description: '2.4 ETH at 3,120 USDC',
+  action: { label: 'View', href: 'https://basescan.org/tx/0x...' },
+  duration: 10_000,
+})
+```
+
+At most six toasts are kept at once. Showing a seventh drops the oldest.
+
+## Position
+
+Set `appearance.toastPosition`:
+
+```tsx
+<WylletProvider appearance={{ toastPosition: 'bottom-right' }}>
+  {children}
+</WylletProvider>
+```
+
+| Value | Notes |
+| --- | --- |
+| `'top-center'` | Default |
+| `'top-left'`, `'top-right'` | Top corners |
+| `'bottom-left'`, `'bottom-center'`, `'bottom-right'` | Bottom edge |
+
+## Styling
+
+Add your own classes to every toast with the `toast` slot:
+
+```tsx
+<WylletProvider classNames={{ toast: 'shadow-xl' }}>
+  {children}
+</WylletProvider>
+```
+
+Toasts respect `appearance.disableAnimations` and the user's reduced-motion setting. Error toasts are announced to screen readers as alerts, and the rest as status messages. See [Class names](/docs/class-names) and [Theming](/docs/theming) for more.

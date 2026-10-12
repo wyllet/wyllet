@@ -1,0 +1,176 @@
+`getDefaultConfig()` creates the wagmi config for your app. It returns a standard wagmi `Config` that you pass to `<WagmiProvider>`, and it also registers your wallet list and app metadata so `<WylletProvider>` picks them up without extra props.
+
+## Basic usage
+
+```ts title="wagmi.ts"
+import { base, mainnet } from 'viem/chains'
+import { getDefaultConfig } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  walletConnectProjectId: 'YOUR_PROJECT_ID',
+  chains: [mainnet, base],
+})
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `appName` | `string` | Required | Your dApp's name. Shown in the connect panel title and sent to wallets. |
+| `appDescription` | `string` | `appName` | Sent to wallets in the WalletConnect metadata. |
+| `appUrl` | `string` | `window.location.origin` | Your dApp's URL, sent to wallets. Set it explicitly when the config is evaluated on the server. |
+| `appIcon` | `string` | None | URL of a square icon shown inside wallets. |
+| `walletConnectProjectId` | `string` | None | Enables WalletConnect (QR codes, mobile wallets and the All wallets directory). Requires `@walletconnect/ethereum-provider`. |
+| `chains` | `readonly [Chain, ...Chain[]]` | Required | Supported networks in priority order. The first chain is the default. |
+| `transports` | `Partial<Record<chainId, Transport>>` | `http()` per chain | Transport per chain id. Chains you leave out use `http()`, which is the chain's public RPC. |
+| `wallets` | `Wallet[]` | `defaultWallets()` | Wallets shown in the connect panel, in order. |
+| `connectors` | `CreateConnectorFn[]` | `[]` | Extra wagmi connectors, appended as-is. |
+
+Every other wagmi `createConfig()` parameter is passed through unchanged. The type is `Omit<CreateConfigParameters, 'chains' | 'transports' | 'connectors'>` plus the fields above, so options like `ssr`, `storage`, `syncConnectedChain` or `pollingInterval` work as they do in wagmi.
+
+## Chains
+
+`chains` accepts any viem `Chain`. Mix chains from `viem/chains`, Wyllet's `popularChains` and `popularTestnets` presets, and your own chains built with `customChain()`.
+
+```ts
+import { sepolia } from 'viem/chains'
+import { getDefaultConfig, popularChains } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  chains: [...popularChains, sepolia],
+})
+```
+
+The order matters: the first chain is the default. To arrange the Networks tab differently, use the `chainOrder` prop on `<WylletProvider>`. See [Chains](/docs/chains).
+
+## Transports
+
+By default each chain uses `http()` with no URL, which means the chain's public RPC endpoint. Public endpoints are rate-limited and are not meant for production traffic.
+
+<Callout type="warning">
+
+Use your own RPC provider in production. Public RPCs can throttle or drop requests, which shows up as missing balances, slow confirmations and failed reads.
+
+</Callout>
+
+```ts
+import { http } from 'wagmi'
+import { base, mainnet } from 'viem/chains'
+import { getDefaultConfig } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  chains: [mainnet, base],
+  transports: {
+    [mainnet.id]: http('https://eth-mainnet.example.com/v2/KEY'),
+    [base.id]: http('https://base-mainnet.example.com/v2/KEY'),
+  },
+})
+```
+
+`transports` is partial. Any chain without an entry falls back to `http()`.
+
+## Wallets
+
+`wallets` controls which wallets appear in the connect panel and in what order. It defaults to `defaultWallets()`: MetaMask, Phantom, Rabby, OKX Wallet and WalletConnect.
+
+```ts
+import { base, mainnet } from 'viem/chains'
+import { burnerWallet, coinbaseWallet, defaultWallets, getDefaultConfig } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  chains: [mainnet, base],
+  wallets: [
+    ...defaultWallets(),
+    coinbaseWallet({ overrides: { icon: '/brand/coinbase-wallet.svg' } }),
+    burnerWallet(),
+  ],
+})
+```
+
+Installed browser wallets you did not list are still detected through EIP-6963 and shown under **Detected**. See [Wallets](/docs/wallets) for every preset and for custom wallets.
+
+## What getDefaultConfig sets up
+
+For reference, `getDefaultConfig()` builds the connector list like this:
+
+1. A WalletConnect connector, if `walletConnectProjectId` is set and at least one wallet in `wallets` supports WalletConnect. It is created with `showQrModal: false`, because Wyllet renders its own QR code.
+2. One connector for each wallet that brings its own (for example `burnerWallet()`), tagged so the panel knows which wallet it belongs to.
+3. A generic `injected({ shimDisconnect: true })` connector, used for `window.ethereum` in browsers and in-app webviews without EIP-6963.
+4. Your extra `connectors`.
+
+EIP-6963 discovery of installed extensions is handled by wagmi itself.
+
+## App metadata
+
+`appName`, `appDescription`, `appUrl` and `appIcon` are sent to wallets when connecting through WalletConnect, and `appName` appears in the connect panel title ("Connect to My dApp").
+
+Some app details are only set on the provider, through its `appInfo` prop: `learnMoreUrl` for the "Learn more about wallets" link, and `termsUrl` plus `privacyUrl` for the terms notice in the panel footer. The notice only appears when both URLs are set. `appInfo` is merged over what `getDefaultConfig()` registered.
+
+```tsx
+<WylletProvider appInfo={{ termsUrl: '/terms', privacyUrl: '/privacy' }}>
+```
+
+## Using your own createConfig
+
+You can skip `getDefaultConfig()` and write the wagmi config yourself. Wyllet works with any config, but because nothing is registered for it, pass the Wyllet-specific details to `<WylletProvider>` instead.
+
+```ts title="wagmi.ts"
+import { createConfig, http, injected } from 'wagmi'
+import { walletConnect } from 'wagmi/connectors'
+import { base, mainnet } from 'viem/chains'
+
+export const projectId = 'YOUR_PROJECT_ID'
+
+export const config = createConfig({
+  chains: [mainnet, base],
+  transports: {
+    [mainnet.id]: http(),
+    [base.id]: http(),
+  },
+  connectors: [
+    walletConnect({
+      projectId,
+      showQrModal: false,
+      metadata: {
+        name: 'My dApp',
+        description: 'My dApp',
+        url: 'https://my-dapp.xyz',
+        icons: ['https://my-dapp.xyz/icon.png'],
+      },
+    }),
+    injected({ shimDisconnect: true }),
+  ],
+})
+```
+
+```tsx title="providers.tsx"
+import { defaultWallets, WylletProvider } from 'wyllet'
+import { projectId } from './wagmi'
+
+<WylletProvider
+  wallets={defaultWallets()}
+  appInfo={{ name: 'My dApp' }}
+  walletConnectProjectId={projectId}
+>
+  {children}
+</WylletProvider>
+```
+
+Keep these points in mind with a hand-written config:
+
+- Include a `walletConnect()` connector with `showQrModal: false` if you want QR codes and mobile wallets. Without it, the WalletConnect option is hidden.
+- Pass `walletConnectProjectId` to the provider as well. The All wallets directory needs it.
+- Pass `appInfo` with at least a `name`. Otherwise the panel title reads "Connect to this app".
+- `wallets` defaults to `defaultWallets()` when nothing is registered.
+- A wallet that relies on its own connector must find that connector in your config. For the burner wallet, add `burner()` (exported by Wyllet) to `connectors`; `burnerWallet()` matches it by the connector id `burner`. A custom wallet can point at any connector in your config with `connectorId`.
+
+## Related
+
+- [WylletProvider](/docs/provider)
+- [Wallets](/docs/wallets)
+- [Chains](/docs/chains)
+- [WalletConnect](/docs/walletconnect)

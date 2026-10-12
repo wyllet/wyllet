@@ -1,0 +1,145 @@
+Networks are defined in code, so every user sees the same set in the order you choose. Mix Wyllet's presets, any chain from `viem/chains`, and your own chains built with `customChain()`.
+
+```tsx title="wagmi.ts"
+import { sepolia } from 'viem/chains'
+import { customChain, getDefaultConfig, popularChains } from 'wyllet'
+
+const myChain = customChain({
+  id: 424242,
+  name: 'My Chain',
+  rpcUrl: 'https://rpc.mychain.xyz',
+  explorerUrl: 'https://scan.mychain.xyz',
+  nativeCurrency: { name: 'My Token', symbol: 'MYT', decimals: 18 },
+  icon: '/mychain.svg',
+  nativeIcon: '/myt.svg',
+})
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  chains: [myChain, ...popularChains, sepolia],
+})
+```
+
+## Chain order
+
+The order of `chains` is the priority order, and the first chain is the default. The Networks tab lists chains in the same order unless you set `chainOrder` (see [below](#arranging-the-networks-tab)).
+
+`getDefaultConfig` uses each chain's public RPC by default. Use your own RPC in production with `transports`:
+
+```tsx
+import { http } from 'wagmi'
+
+getDefaultConfig({
+  appName: 'My dApp',
+  chains: [mainnet, base],
+  transports: { [base.id]: http('https://base.my-rpc.xyz') },
+})
+```
+
+Chains you leave out of `transports` keep the public RPC.
+
+## Presets
+
+`popularChains` and `popularTestnets` are arrays of viem chains, ready to spread into `chains`.
+
+| Preset | Chains, in order |
+| --- | --- |
+| `popularChains` | Ethereum, Base, OP Mainnet, Arbitrum One, Polygon, BNB Smart Chain, Avalanche, ZKsync Era, Linea Mainnet, Scroll |
+| `popularTestnets` | Sepolia, Base Sepolia, OP Sepolia, Arbitrum Sepolia, Polygon Amoy |
+
+Spread a preset and add to it, or pick individual chains from `viem/chains` instead. Nothing in Wyllet requires the presets.
+
+## Custom chains
+
+`customChain()` defines any EVM chain in one call, such as your own L2, an appchain or a devnet. It returns a viem `Chain` that works anywhere wagmi and viem expect one, and it carries Wyllet's icon metadata.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `number` | Yes | Chain ID |
+| `name` | `string` | Yes | Display name |
+| `rpcUrl` | `string` | Yes | HTTPS JSON-RPC endpoint |
+| `nativeCurrency` | `{ name: string; symbol: string; decimals: number }` | No | Defaults to Ether, `ETH`, 18 decimals |
+| `explorerUrl` | `string` | No | Block explorer base URL. Enables explorer links for addresses and transactions |
+| `testnet` | `boolean` | No | Shows a Testnet tag in the Networks tab |
+| `icon` | `string` | No | Chain logo URL or data URI |
+| `color` | `string` | No | Brand color for the generated monogram. Setting it skips the built-in icon for that chain ID |
+| `nativeIcon` | `string` | No | Icon for the native currency in the Tokens tab |
+
+Wyllet stores `icon`, `color` and `nativeIcon` on the chain under `custom.wyllet` (the `ChainExtras` type). You can add the same field to a viem chain to give it a native currency icon:
+
+```tsx
+import { base } from 'viem/chains'
+
+const baseWithIcons = { ...base, custom: { wyllet: { nativeIcon: '/eth.svg' } } }
+```
+
+## Chain icons
+
+Wyllet bundles official logos for these networks and their testnets: Ethereum (including Sepolia and Holesky), OP, Arbitrum, Base, Polygon, Avalanche, ZKsync, Linea, Scroll, Gnosis, Zora and Blast. Local dev chains with ID `31337` (Hardhat, Anvil) get a generic developer mark.
+
+Any other chain gets a monogram: the first letter of its name on a color derived from the name. This includes BNB Smart Chain, which is in `popularChains` but has no bundled artwork.
+
+Icons resolve in this order:
+
+1. The `chainIcons` prop on `WylletProvider`
+2. `icon` from `customChain()`
+3. The built-in logo for the chain ID
+4. A monogram, using `color` when you set one
+
+Override any chain's icon by ID with `chainIcons`:
+
+```tsx
+<WylletProvider chainIcons={{ 56: '/brand/bnb.svg', 424242: '/mychain.svg' }}>
+  {children}
+</WylletProvider>
+```
+
+## Arranging the Networks tab
+
+`chainOrder` moves chain IDs to the front of the Networks tab, in the order given. The remaining chains follow in config order. It does not change the default chain.
+
+```tsx
+<WylletProvider chainOrder={[8453, 424242]}>
+  {children}
+</WylletProvider>
+```
+
+This shows Base, then My Chain, then everything else.
+
+## Switching networks
+
+The Networks tab switches with wagmi's `switchChain`. If an injected wallet reports that it does not know the chain, wagmi asks it to add the network using the name, RPC URL, explorer and native currency from your chain definition. The user approves the new network in their wallet, and the switch continues. No extra setup is needed for custom chains.
+
+When the wallet is on a chain that is not in your config, Wyllet shows the wrong-network state. See [Account panel](/docs/account-panel#wrong-network).
+
+## useWylletChains
+
+Returns your configured chains, arranged by `chainOrder`. Use it to build your own network picker.
+
+```tsx
+import { ChainIcon, useWylletChains } from 'wyllet'
+import { useSwitchChain } from 'wagmi'
+
+function NetworkList() {
+  const { chains } = useWylletChains()
+  const { mutate: switchChain } = useSwitchChain()
+  return chains.map((chain) => (
+    <button key={chain.id} onClick={() => switchChain({ chainId: chain.id })}>
+      <ChainIcon chainId={chain.id} size={20} />
+      {chain.name}
+    </button>
+  ))
+}
+```
+
+## ChainIcon
+
+Renders a chain's icon as an `img`, using the resolution order above. It must be rendered inside `WylletProvider`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `chainId` | `number` | | Chain to show |
+| `size` | `number` | `20` | Width and height in pixels |
+| `className` | `string` | | Extra class name |
+
+The image's `alt` text is the chain name when the chain is in your config.

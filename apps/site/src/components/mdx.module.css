@@ -1,0 +1,45 @@
+.callout {
+  display: grid;
+  gap: 4px;
+  margin: 24px 0;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.callout[data-type='warning'] {
+  border-color: color-mix(in srgb, #f5a524 45%, transparent);
+  background: color-mix(in srgb, #f5a524 9%, transparent);
+}
+.callout p {
+  margin: 0;
+}
+.calloutLabel {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.callout[data-type='warning'] .calloutLabel {
+  color: var(--warn);
+}
+.tableWrap {
+  overflow-x: auto;
+  margin: 20px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.callout {
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 14px;
+}
+.calloutArt {
+  width: 44px;
+  height: 44px;
+  margin-top: 2px;
+}
+.calloutBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}

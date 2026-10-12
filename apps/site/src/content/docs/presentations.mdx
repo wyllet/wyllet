@@ -1,0 +1,121 @@
+The connect and account views open in a single panel. The `presentation` option decides how that panel enters the screen: as a side drawer, a popover anchored to the element that opened it, or a centered modal. On phones it becomes a bottom sheet.
+
+## Choosing a presentation
+
+```tsx
+<WylletProvider appearance={{ presentation: 'popover' }}>
+```
+
+| Value | Behavior |
+| --- | --- |
+| `'drawer'` | A full-height panel that floats along one side of the screen. The default. |
+| `'popover'` | A panel positioned next to the element that opened it, like a dropdown. Falls back to `modal` when there is no anchor. |
+| `'modal'` | A centered dialog. |
+
+Every presentation shares the same behavior: the panel renders in a portal on `document.body`, traps focus while open, locks page scroll, closes on Escape or a click outside, and returns focus to the previously focused element when it closes.
+
+## Drawer
+
+The drawer is the default. Use `drawerSide` to choose the side it slides in from.
+
+```tsx
+<WylletProvider appearance={{ presentation: 'drawer', drawerSide: 'left' }}>
+```
+
+| Option | Type | Default |
+| --- | --- | --- |
+| `drawerSide` | `'left' \| 'right'` | `'right'` |
+
+The drawer is up to 420px wide and leaves a small gap around its edges. The page behind it is dimmed by the theme's `overlay` color and `overlayBlur` effect.
+
+## Popover
+
+The popover opens next to its anchor element, aligned to the anchor's left or right edge depending on which half of the viewport the anchor is in. It opens below the anchor, or above it when there is not enough room below. The overlay behind a popover is transparent.
+
+```tsx
+<WylletProvider appearance={{ presentation: 'popover' }}>
+```
+
+The popover needs to know which element to anchor to:
+
+- `<WylletButton>` and the button inside `<ConnectGate>` pass themselves as the anchor automatically.
+- When you open the panel yourself, pass the element. See [Opening with an anchor](#opening-with-an-anchor).
+
+If the panel is opened without an anchor, the popover falls back to a modal. That includes opening it with the provider's keyboard `shortcut`.
+
+The anchor's position is measured when the panel opens.
+
+## Modal
+
+A centered dialog, up to 400px wide.
+
+```tsx
+<WylletProvider appearance={{ presentation: 'modal' }}>
+```
+
+## Mobile bottom sheet
+
+On screens up to 640px wide, the panel opens as a bottom sheet regardless of `presentation`. The sheet has a drag handle: drag it down, or flick it, to dismiss. A short drag snaps back.
+
+Set `mobileSheet` to `false` to keep the configured presentation on phones as well.
+
+```tsx
+<WylletProvider appearance={{ presentation: 'modal', mobileSheet: false }}>
+```
+
+| Option | Type | Default |
+| --- | --- | --- |
+| `mobileSheet` | `boolean` | `true` |
+
+## Opening with an anchor
+
+You can open the panel from any element in your UI. To anchor a popover to it, pass the element when you open the panel.
+
+With `useWylletButton()`, the open functions take the element as their first argument:
+
+```tsx
+import { useWylletButton } from 'wyllet'
+
+function AccountChip() {
+  const { open, openAccount } = useWylletButton()
+  return (
+    <>
+      <button onClick={(e) => open(e.currentTarget)}>Wallet</button>
+      <button onClick={(e) => openAccount(e.currentTarget, 'activity')}>Activity</button>
+    </>
+  )
+}
+```
+
+With `useWyllet()`, the functions take an options object with an `anchor` field:
+
+```tsx
+import { useWyllet } from 'wyllet'
+
+function Toolbar() {
+  const { openConnect, openTab } = useWyllet()
+  return (
+    <>
+      <button onClick={(e) => openConnect({ anchor: e.currentTarget })}>Connect</button>
+      <button onClick={(e) => openTab('networks', { anchor: e.currentTarget })}>Networks</button>
+    </>
+  )
+}
+```
+
+`useWyllet()` also returns `open(view, options)`, `openAccount(options)` and `close()`. `open()` with no view opens the account view when connected and the connect view otherwise. See [Hooks](/docs/hooks).
+
+## Embedded
+
+To show the panel inside your own layout rather than over it, render `<WylletEmbed />` where you want it. It is the same panel with the same theme and options, without an overlay, focus trap or scroll lock. The rest of the site keeps using the presentation you configured. See [WylletEmbed](/docs/components#wylletembed).
+
+## Animations
+
+The panel animates in and out. Set `disableAnimations: true` in `appearance` to turn transitions off. Users who have `prefers-reduced-motion` enabled get reduced motion automatically.
+
+## Related
+
+- [WylletProvider](/docs/provider) for every `appearance` option.
+- [WylletButton](/docs/wyllet-button)
+- [Account panel](/docs/account-panel)
+- Compare the presentations live in the [playground](/playground).

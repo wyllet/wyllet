@@ -1,0 +1,155 @@
+`<WylletProvider>` holds Wyllet's options and renders the panel and toasts. Place it inside `<WagmiProvider>` and `<QueryClientProvider>`, and render every Wyllet component and hook inside it.
+
+## Usage
+
+```tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+import { WagmiProvider } from 'wagmi'
+import { obsidianTheme, WylletProvider } from 'wyllet'
+import { config } from './wagmi'
+
+const queryClient = new QueryClient()
+
+export function Providers({ children }: { children: ReactNode }) {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <WylletProvider
+          theme={obsidianTheme({ accentColor: '#C6F432' })}
+          appearance={{ presentation: 'popover' }}
+          shortcut="mod+k"
+        >
+          {children}
+        </WylletProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
+```
+
+Every prop is optional except `children`. Wyllet components and hooks throw an error if they are rendered outside the provider.
+
+## Props
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | Required | Your app. |
+| `theme` | `Theme \| { light: Theme; dark: Theme }` | Porcelain (light) and Obsidian (dark) | A single theme, or a light and dark pair. See [Theming](/docs/theming). |
+| `colorMode` | `'auto' \| 'light' \| 'dark'` | `'auto'` | Which half of a theme pair to use. `auto` follows the OS. Ignored for a single theme. |
+| `appearance` | `Appearance` | See below | Presentation and behavior options. |
+| `appInfo` | `Partial<AppInfo>` | From `getDefaultConfig()` | Overrides app details. Merged over the registered values. |
+| `wallets` | `Wallet[]` | From `getDefaultConfig()`, else `defaultWallets()` | Overrides the wallet list. Needed with a hand-written wagmi config. |
+| `walletConnectProjectId` | `string` | From `getDefaultConfig()` | WalletConnect project ID for hand-written configs. Enables the All wallets directory. |
+| `tokens` | `TokenList \| TokenEntry[] \| 'default' \| false` | `'default'` | Tokens in the Tokens tab, for every user. `'default'` is a built-in list of blue chips, `false` shows the native balance only. See [Tokens](/docs/tokens). |
+| `chainOrder` | `number[]` | `[]` | Chain ids shown first in the Networks tab, in this order. The rest follow in config order. |
+| `allowTokenImport` | `boolean` | `false` | Lets users add ERC-20 tokens by contract address. Saved in their browser. |
+| `shortcut` | `string` | None | Keyboard shortcut that toggles the panel, such as `'mod+k'`. |
+| `messages` | `Partial<Messages>` | English | Rename or translate any string. See [Translations](/docs/i18n). |
+| `classNames` | `Partial<Record<WylletSlot, string>>` | `{}` | Extra classes per element. See [Class names](/docs/class-names). |
+| `chainIcons` | `Record<number, string>` | `{}` | Icon URL per chain id. Takes priority over `customChain()` icons and built-in marks. |
+| `avatar` | `ComponentType<CustomAvatarProps>` | Gradient avatar | Replaces the generated avatar everywhere. |
+| `auth` | `WylletAuthAdapter` | None | Enables Sign-In With Ethereum. See [SIWE](/docs/siwe). |
+| `disclaimer` | `ReactNode` | Terms notice | Custom footer content in the connect panel. Replaces the terms notice. |
+| `ens` | `boolean` | `true` | Resolve ENS names and avatars. Only takes effect when mainnet is in your config. |
+| `injectStyles` | `boolean` | `true` | Inject the base stylesheet. Set `false` and import `wyllet/styles.css` yourself. |
+| `onConnect` | `(info) => void` | None | Called after a connection. See [Callbacks](#callbacks). |
+| `onDisconnect` | `() => void` | None | Called after the wallet disconnects. |
+
+## Appearance
+
+`appearance` groups the options that change how the panel looks and behaves. Pass only the keys you want to change; the rest keep their defaults.
+
+```tsx
+<WylletProvider
+  appearance={{
+    presentation: 'popover',
+    identityCard: true,
+    accountTabs: ['tokens', 'activity'],
+    toastPosition: 'bottom-right',
+  }}
+>
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `presentation` | `'drawer' \| 'popover' \| 'modal'` | `'drawer'` | How the panel enters the screen. See [Presentations](/docs/presentations). |
+| `drawerSide` | `'left' \| 'right'` | `'right'` | Side the drawer slides in from. |
+| `mobileSheet` | `boolean` | `true` | Use a draggable bottom sheet on screens up to 640px wide, whatever the `presentation`. |
+| `identityCard` | `boolean` | `false` | Show a generative holographic card, unique to each address, instead of the compact account summary. |
+| `cardTilt` | `boolean` | `true` | 3D tilt and light sheen that follow the pointer on the identity card. |
+| `accountTabs` | `AccountTab[]` | `['tokens', 'activity', 'networks']` | Tabs in the account panel, in order. |
+| `closeOnConnect` | `boolean` | `true` | Close the panel after a successful connection. With `false`, it moves on to the account panel. |
+| `tokenSort` | `'balance' \| 'list'` | `'balance'` | `balance`: pinned tokens, then tokens the user holds, then the rest, each group in list order. `list`: pinned first, then exactly your list order. |
+| `walletSearch` | `boolean \| 'auto'` | `'auto'` | Search field in the wallet list. `auto` shows it when there are 6 or more wallets. |
+| `walletDirectory` | `boolean` | `true` | The All wallets directory from the WalletConnect registry. Also needs a WalletConnect project ID. |
+| `toastPosition` | `ToastPosition` | `'top-center'` | `'top-left'`, `'top-center'`, `'top-right'`, `'bottom-left'`, `'bottom-center'` or `'bottom-right'`. |
+| `branding` | `boolean` | `true` | The "Powered by Wyllet" badge in the panel footers. |
+| `disableAnimations` | `boolean` | `false` | Turn off all transitions. `prefers-reduced-motion` is respected either way. |
+
+## App info
+
+`appInfo` accepts any subset of these fields. Values you pass are merged over the ones `getDefaultConfig()` registered from `appName`, `appDescription`, `appUrl` and `appIcon`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Shown in the connect panel title. Falls back to "this app" when nothing is set. |
+| `description` | `string` | App description. |
+| `url` | `string` | App URL. |
+| `icon` | `string` | Square icon URL. |
+| `learnMoreUrl` | `string` | Target of the "Learn more about wallets" link. Defaults to ethereum.org's wallet page. |
+| `termsUrl` | `string` | Terms of service URL. |
+| `privacyUrl` | `string` | Privacy policy URL. |
+
+The connect panel footer shows "By connecting you accept the Terms and Privacy Policy" only when both `termsUrl` and `privacyUrl` are set. A `disclaimer` replaces that notice entirely.
+
+## Keyboard shortcut
+
+`shortcut` is a `+`-separated combination. The modifiers are `mod`, `ctrl`, `meta`, `shift` and `alt`, and the last part is the key. `mod` means ⌘ on macOS and Ctrl elsewhere.
+
+```tsx
+<WylletProvider shortcut="mod+k">
+```
+
+The shortcut toggles the panel. It opens the account view when the user is connected (and signed in, if you use SIWE), and the connect view otherwise. While disconnected, `<WylletButton>` shows the shortcut as a hint.
+
+## Custom avatar
+
+`avatar` receives the address, the resolved ENS avatar URL (when there is one) and the size in pixels.
+
+```tsx
+import type { CustomAvatarProps } from 'wyllet'
+
+function MyAvatar({ address, ensImage, size }: CustomAvatarProps) {
+  return <img src={ensImage ?? `/avatars/${address}.png`} width={size} height={size} alt="" />
+}
+
+<WylletProvider avatar={MyAvatar}>
+```
+
+## Callbacks
+
+`onConnect` runs after each connection, including automatic reconnects on page load. Use `isReconnected` to tell them apart.
+
+```tsx
+<WylletProvider
+  onConnect={({ address, chainId, connectorId, isReconnected }) => {
+    if (!isReconnected) analytics.track('wallet_connected', { connectorId, chainId })
+  }}
+  onDisconnect={() => analytics.track('wallet_disconnected')}
+>
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `address` | `Address` | The connected account. |
+| `chainId` | `number` | The connected chain. |
+| `connectorId` | `string` | The wagmi connector id. |
+| `isReconnected` | `boolean` | `true` when the session was restored rather than newly connected. |
+
+## Related
+
+- [Configuration](/docs/configuration)
+- [Presentations](/docs/presentations)
+- [Theming](/docs/theming)
+- [Hooks](/docs/hooks)

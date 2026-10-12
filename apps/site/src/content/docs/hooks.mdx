@@ -1,0 +1,319 @@
+Wyllet exports nine hooks. All of them except `useCopyToClipboard` read Wyllet's context, so they must be called from a component rendered inside `WylletProvider` (which itself sits inside wagmi's `WagmiProvider` and react-query's `QueryClientProvider`). Calling one outside the provider throws an error that names `WylletProvider`.
+
+```tsx
+import {
+  useCopyToClipboard,
+  useWalletOptions,
+  useWyllet,
+  useWylletActivity,
+  useWylletAuth,
+  useWylletButton,
+  useWylletChains,
+  useWylletToast,
+  useWylletTokens,
+} from 'wyllet'
+```
+
+## useWyllet
+
+Controls the Wyllet panel from anywhere in your app.
+
+```ts
+function useWyllet(): {
+  open(view?: PanelView, options?: OpenOptions): void
+  close(): void
+  openConnect(options?: OpenOptions): void
+  openAccount(options?: OpenOptions): void
+  openTab(tab: AccountTab, options?: OpenOptions): void
+  view: PanelView | null
+  isConnected: boolean
+  address: Address | undefined
+  chainId: number | undefined
+  authStatus: AuthStatus | undefined
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `open` | `(view?, options?) => void` | Opens a view. Without a view it opens `'account'` when connected and `'connect'` otherwise. |
+| `close` | `() => void` | Closes the panel. |
+| `openConnect` | `(options?) => void` | Opens the connect view. |
+| `openAccount` | `(options?) => void` | Opens the account panel. |
+| `openTab` | `(tab, options?) => void` | Opens the account panel on a tab: `'tokens'`, `'activity'` or `'networks'`. |
+| `view` | `PanelView \| null` | The open view (`'connect'` or `'account'`), or `null` when closed. |
+| `isConnected` | `boolean` | `true` when wagmi reports a connected account. |
+| `address` | `Address \| undefined` | The connected address. |
+| `chainId` | `number \| undefined` | The connected chain id. |
+| `authStatus` | `AuthStatus \| undefined` | Sign-in status for the connected account, or `undefined` when no `auth` adapter is set. |
+
+`OpenOptions` has two optional fields: `anchor` (an `Element` the popover presentation anchors to) and `tab` (an `AccountTab`).
+
+```tsx
+function Toolbar() {
+  const { openConnect, openTab, isConnected } = useWyllet()
+  return isConnected ? (
+    <button onClick={(e) => openTab('activity', { anchor: e.currentTarget })}>Activity</button>
+  ) : (
+    <button onClick={() => openConnect()}>Connect</button>
+  )
+}
+```
+
+## useWylletButton
+
+Headless state for building your own trigger. It powers `WylletButton`. See [WylletButton](/docs/wyllet-button) for a full walkthrough.
+
+```ts
+function useWylletButton(): WylletButtonState
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `mounted` | `boolean` | `false` during server rendering and the first client render. Render a placeholder until it is `true` to avoid hydration mismatches. |
+| `status` | `'disconnected' \| 'connecting' \| 'reconnecting' \| 'connected'` | wagmi's connection status. |
+| `account` | `object \| undefined` | Present when connected: `address`, `displayName` (ENS name or shortened address), `ensName`, and `balance` (`formatted`, `symbol`, `value`, `decimals`). |
+| `chain` | `object \| undefined` | Present when connected: `id`, `name`, and `unsupported` (`true` when the wallet is on a chain your config does not include). |
+| `authStatus` | `AuthStatus \| undefined` | `undefined` when no `auth` adapter is configured. |
+| `open` | `(anchor?: Element \| null) => void` | Opens the connect view when disconnected or not yet signed in, otherwise the account panel. |
+| `openConnect` | `(anchor?: Element \| null) => void` | Opens the connect view. |
+| `openAccount` | `(anchor?: Element \| null, tab?: AccountTab) => void` | Opens the account panel, optionally on a tab. |
+
+Pass the clicked element as `anchor` so the `popover` presentation can position itself next to it.
+
+```tsx
+function MyButton() {
+  const { mounted, account, chain, open } = useWylletButton()
+  if (!mounted) return <button disabled>Connect</button>
+  return (
+    <button onClick={(e) => open(e.currentTarget)}>
+      {account ? `${account.displayName} on ${chain?.name}` : 'Connect'}
+    </button>
+  )
+}
+```
+
+## useWylletToast
+
+Returns the toast API. See [Toasts](/docs/toasts).
+
+```ts
+function useWylletToast(): ToastApi
+```
+
+| Member | Type | Description |
+| --- | --- | --- |
+| call | `(options: ToastOptions) => string` | Shows a toast and returns its id. Pass an existing `id` to update that toast in place. |
+| `success` | `(title, options?) => string` | Shows a success toast. |
+| `error` | `(title, options?) => string` | Shows an error toast. |
+| `loading` | `(title, options?) => string` | Shows a loading toast. Loading toasts never auto-dismiss. |
+| `update` | `(id: string, options: Partial<ToastOptions>) => void` | Updates an existing toast. Does nothing if the id is unknown. |
+| `dismiss` | `(id?: string) => void` | Dismisses one toast, or all of them when called without an id. |
+| `promise` | `(promise, messages) => Promise<T>` | Shows a loading toast that becomes success or error when the promise settles. Returns the original result and rethrows on failure. |
+
+`ToastOptions` fields: `title` (`ReactNode`), `description`, `status` (`'info' | 'success' | 'error' | 'loading'`), `duration` in milliseconds (`Infinity` keeps the toast open), `action` (`label` plus `href` or `onClick`) and `id`. Without a `duration`, error toasts stay for 7 seconds and other toasts for 4.5 seconds.
+
+```tsx
+const toast = useWylletToast()
+
+toast.success('Saved')
+
+await toast.promise(bridge(), {
+  loading: 'Bridging…',
+  success: 'Bridged',
+  error: (e) => `Bridge failed: ${String(e)}`,
+})
+```
+
+## useWylletActivity
+
+The connected account's activity timeline, plus transaction tracking. See [Activity and transactions](/docs/activity).
+
+```ts
+function useWylletActivity(): {
+  activity: ActivityItem[]
+  addTransaction(tx: {
+    hash: Hash
+    description?: string
+    chainId?: number
+    account?: Address
+    toast?: boolean
+  }): boolean
+  log(entry: {
+    title: string
+    description?: string
+    status?: ActivityStatus
+    account?: Address
+  }): boolean
+  clearActivity(): void
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `activity` | `ActivityItem[]` | Entries for the connected account, newest first. Empty when disconnected. |
+| `addTransaction` | `(tx) => boolean` | Adds a pending transaction, watches for its receipt and shows pending and confirmed toasts (set `toast: false` to skip them). Defaults to the connected account and chain. Returns `false` if no account or chain is known. |
+| `log` | `(entry) => boolean` | Adds a custom entry. `status` defaults to `'info'`. Returns `false` if no account is known. |
+| `clearActivity` | `() => void` | Clears the connected account's entries. |
+
+Activity is stored in `localStorage` (up to 50 entries per account). Transactions still pending when the page reloads are watched again if they are less than 24 hours old. A transaction that is not mined within 30 minutes stays `pending` rather than being marked as failed.
+
+```tsx
+const { writeContractAsync } = useWriteContract()
+const { addTransaction, log } = useWylletActivity()
+
+const hash = await writeContractAsync({ /* ... */ })
+addTransaction({ hash, description: 'Mint 1 NFT' })
+
+log({ title: 'Staked 10 ETH', status: 'success' })
+```
+
+## useWylletAuth
+
+Sign-In With Ethereum state. Requires the `auth` prop on `WylletProvider`. See [Sign-In With Ethereum](/docs/siwe).
+
+```ts
+function useWylletAuth(): {
+  enabled: boolean
+  status: AuthStatus
+  signIn(options?: OpenOptions): void
+  signOut(): Promise<void>
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `enabled` | `boolean` | `true` when an `auth` adapter is configured. |
+| `status` | `'loading' \| 'unauthenticated' \| 'authenticated'` | Per connected account: a session for a different address reads as `'unauthenticated'`. |
+| `signIn` | `(options?) => void` | Opens the panel at the sign-in step, connecting first if needed. |
+| `signOut` | `() => Promise<void>` | Clears the local session and calls your adapter's `signOut`. Errors from the adapter are swallowed. |
+
+```tsx
+function Session() {
+  const { status, signIn, signOut } = useWylletAuth()
+  if (status === 'loading') return null
+  return status === 'authenticated' ? (
+    <button onClick={() => signOut()}>Sign out</button>
+  ) : (
+    <button onClick={(e) => signIn({ anchor: e.currentTarget })}>Sign in</button>
+  )
+}
+```
+
+## useWylletTokens
+
+The token list for a chain: your configured tokens, plus tokens the user imported when `allowTokenImport` is on. See [Tokens](/docs/tokens).
+
+```ts
+function useWylletTokens(chainId?: number): {
+  tokens: ListedToken[]
+  importToken(token: Token, chainId?: number): void
+  removeToken(address: string, chainId?: number): void
+  canImport: boolean
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `tokens` | `ListedToken[]` | Configured tokens in list order, followed by imported ones. Imported tokens have `custom: true`. Empty when no chain id is known. |
+| `importToken` | `(token, chainId?) => void` | Saves a token for the user in this browser. Defaults to the hook's chain. |
+| `removeToken` | `(address, chainId?) => void` | Removes an imported token. Address matching is case-insensitive. |
+| `canImport` | `boolean` | The provider's `allowTokenImport` value. |
+
+`chainId` defaults to the connected chain. Imported tokens are only included in `tokens` when `allowTokenImport` is `true`.
+
+```tsx
+function TokenList() {
+  const { tokens } = useWylletTokens(8453)
+  return (
+    <ul>
+      {tokens.map((t) => (
+        <li key={t.address}>{t.symbol}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+## useWylletChains
+
+Your configured chains, ordered by the provider's `chainOrder`. Chains not listed in `chainOrder` follow in config order. See [Chains](/docs/chains).
+
+```ts
+function useWylletChains(): { chains: Chain[] }
+```
+
+```tsx
+const { chains } = useWylletChains()
+// With chainOrder={[8453]}: Base first, then the rest of your config
+```
+
+`chainOrder` only affects display. The default chain is still the first chain in your wagmi config.
+
+## useCopyToClipboard
+
+Copies text and exposes a `copied` flag that resets after a delay. It does not need `WylletProvider`.
+
+```ts
+function useCopyToClipboard(resetMs?: number): {
+  copied: boolean
+  copy(text: string): Promise<boolean>
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `copied` | `boolean` | `true` for `resetMs` milliseconds (default `1600`) after a successful copy. |
+| `copy` | `(text: string) => Promise<boolean>` | Writes to `navigator.clipboard`. Resolves `false` if the clipboard is unavailable or the write fails. |
+
+```tsx
+function CopyAddress({ address }: { address: string }) {
+  const { copied, copy } = useCopyToClipboard()
+  return <button onClick={() => copy(address)}>{copied ? 'Copied' : 'Copy'}</button>
+}
+```
+
+## useWalletOptions
+
+The wallet list Wyllet's connect view uses: your configured wallets merged with what is actually available in the browser. Use it to build a fully custom wallet picker.
+
+```ts
+function useWalletOptions(): {
+  groups: WalletGroup[]
+  all: WalletOption[]
+  walletConnectConnector?: Connector
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `groups` | `WalletGroup[]` | Non-empty groups in order: `'installed'` (detected or recently used), `'popular'`, and `'more'` (wallets with `featured: false`). |
+| `all` | `WalletOption[]` | Every option, in the same order as the groups. |
+| `walletConnectConnector` | `Connector \| undefined` | The WalletConnect connector, if your config has one. |
+
+Each `WalletOption` has:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `wallet` | `Wallet` | The wallet. Installed extensions use the icon they announce. |
+| `connector` | `Connector \| undefined` | The connector used for a direct connection. |
+| `installed` | `boolean` | An EIP-6963 provider matching the wallet's `rdns` was announced. |
+| `recent` | `boolean` | The user connected with this wallet recently. |
+| `action` | `'connect' \| 'walletConnect' \| 'get'` | What picking it does: connect directly, start WalletConnect, or show install links. |
+
+Installed EIP-6963 wallets you did not list still appear in the `'installed'` group. Wallets that can neither connect nor use WalletConnect, and have no `downloadUrls`, are left out.
+
+```tsx
+import { useConnect } from 'wagmi'
+
+function Picker() {
+  const { all } = useWalletOptions()
+  const { connect } = useConnect()
+  return all
+    .filter((o) => o.action === 'connect' && o.connector)
+    .map((o) => (
+      <button key={o.wallet.id} onClick={() => connect({ connector: o.connector! })}>
+        {o.wallet.name}
+      </button>
+    ))
+}
+```

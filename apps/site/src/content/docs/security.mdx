@@ -1,0 +1,168 @@
+A wallet connector runs on the same page as your users' wallets, so everything it ships and everything it does in the browser matters. This page covers what Wyllet depends on, how releases are published and how to verify them, what it sends over the network, what it stores, how to run it under a Content Security Policy, and what it does not do.
+
+## Zero third-party runtime dependencies
+
+The `wyllet` package has no `dependencies` field. At runtime it only imports libraries your dApp already has, declared as peer dependencies:
+
+| Peer | Range |
+| --- | --- |
+| `react` | `>=18` |
+| `react-dom` | `>=18` |
+| `wagmi` | `^3.0.0` |
+| `viem` | `^2.15.0` |
+| `@tanstack/react-query` | `>=5.0.0` |
+| `@walletconnect/ethereum-provider` | `^2.21.1` (optional) |
+
+Because they are peers, your lockfile decides which versions run, and you can audit and update them on your own schedule.
+
+WalletConnect is an optional peer. If you do not pass `walletConnectProjectId`, you do not need to install it. If you do, you install `@walletconnect/ethereum-provider` yourself and pin the version you trust. Wyllet's bundle never imports it directly: wagmi's `walletConnect` connector loads it when WalletConnect is used.
+
+```bash
+npm view wyllet dependencies
+# prints nothing: there are none
+```
+
+Small pieces that a library would usually pull from npm are written in the package instead. The most notable is the QR code encoder.
+
+## The dependency policy test
+
+`packages/wyllet/test/policy.test.ts` runs in CI on every push and pull request. It fails the build if:
+
+1. `package.json` has any entry in `dependencies`.
+2. `peerDependencies` contains anything other than the six packages above.
+3. The built bundle (`dist/index.js`) imports any package outside that list. The test scans every `import` and `from` specifier in the bundle, so a runtime import of any other package fails the build even if `package.json` looks clean.
+
+CI runs the build before the tests so the bundle check always has a fresh `dist` to scan.
+
+## The built-in QR encoder
+
+Wyllet draws WalletConnect and Receive QR codes with its own encoder (`src/qr/encode.ts`). It supports byte mode only, which covers everything Wyllet encodes, and follows Project Nayuki's reference implementation.
+
+Two tests keep it honest:
+
+- `test/qr.test.ts` compares our output module-for-module with `uqr`, a port of the reference encoder, at all four error-correction levels (L, M, Q, H). The inputs include addresses, an `ethereum:` URI, Unicode and emoji, WalletConnect URIs of several lengths and a 1,200-character string.
+- `test/qr-scan.test.ts` rasterizes the exact styled geometry Wyllet draws at 240px on a 1x raster with 3x3 supersampling, then decodes it with `jsQR`. It covers 30 addresses and 10 WalletConnect URIs, with and without a center logo, and fails if a single code does not decode to its input.
+
+`uqr` and `jsqr` are dev dependencies. They are never shipped to your users.
+
+## Network requests
+
+Wyllet makes no network requests of its own, with one opt-in exception: the **All wallets** directory.
+
+When WalletConnect is configured with a project id and `appearance.walletDirectory` is not `false`, opening **All wallets** fetches pages of 40 wallets from WalletConnect's registry at `explorer-api.walletconnect.com`, sending your project id and the user's search text. Logos are then loaded from the image URLs the registry returns. Nothing is fetched until a user opens the directory. Results are cached in memory for the rest of the page session, and failed requests are not cached, so "Retry" really retries.
+
+```tsx
+<WylletProvider appearance={{ walletDirectory: false }} />
+```
+
+Other traffic you will see comes from the libraries you configured, not from Wyllet itself:
+
+- **RPC calls** go through your wagmi transports: balances, token balances and metadata, ENS names and avatars (only when mainnet is in your config and `ens` is on), gas price (polled every 12 seconds while the Networks tab is open) and transaction receipts. `getDefaultConfig` uses each chain's public RPC unless you pass `transports`. Use your own RPC in production.
+- **WalletConnect** connects to WalletConnect's relay when a user connects through it.
+- **ENS avatar images** load from whatever URL the ENS record points to.
+
+Wyllet has no analytics, telemetry or tracking code.
+
+## Releases and npm provenance
+
+Releases are published from GitHub Actions, never from a developer's machine.
+
+- Pushing a version tag (for example `v1.0.0`) runs `.github/workflows/release.yml`.
+- The workflow checks that the tag matches the version in `packages/wyllet/package.json`.
+- It installs with `pnpm install --frozen-lockfile`, and `prepublishOnly` re-runs the typecheck, the full test suite and the build before anything is uploaded.
+- It publishes with npm Trusted Publishing. GitHub's OIDC token proves to npm which repository and workflow is publishing. No npm token is stored in the repository or its secrets, and npm only accepts publishes for `wyllet` from this workflow.
+- `publishConfig.provenance` is `true`, so every version carries a signed provenance attestation that links the tarball to the exact commit and workflow run that built it.
+
+### Verify a release
+
+In a project that has `wyllet` installed:
+
+```bash
+npm audit signatures
+```
+
+This checks the registry signatures and provenance attestations of your installed packages, including `wyllet`.
+
+On the [npm package page](https://www.npmjs.com/package/wyllet), the provenance section links to the source commit and the GitHub Actions run that published each version.
+
+## Content Security Policy
+
+By default Wyllet injects its base stylesheet in a `<style>` element. To serve it as a file instead, turn injection off and import the stylesheet:
+
+```tsx title="app/providers.tsx"
+import 'wyllet/styles.css'
+
+<WylletProvider injectStyles={false}>{children}</WylletProvider>
+```
+
+<Callout type="warning">
+
+`injectStyles={false}` only moves the base stylesheet. In 1.0, Wyllet always renders one small inline `<style>` element with the active theme's CSS variables, and some elements use inline `style` values (sizes, popover position, avatar gradients). There is no nonce option yet, so a `style-src` without `'unsafe-inline'` blocks the theme element. If you need that, open an issue.
+
+</Callout>
+
+The other directives to check:
+
+| Directive | What to allow |
+| --- | --- |
+| `script-src` | Nothing extra. Wyllet does not use `eval` or inject scripts. |
+| `img-src` | `data:` for the built-in wallet, chain and token icons. Hosts of any icon URLs you configure. `https:` if you show ENS avatars, which can point anywhere. With All wallets, the host the registry serves wallet logos from (check your browser's network panel for the exact host). |
+| `connect-src` | Your RPC endpoints. With WalletConnect, the relay and API endpoints listed in WalletConnect's own documentation, plus `https://explorer-api.walletconnect.com` for the All wallets directory. |
+
+WalletConnect's endpoints are maintained by WalletConnect, so take the current list from their documentation rather than from this page.
+
+## What Wyllet stores
+
+Wyllet uses `localStorage` with keys prefixed `wyllet.v1.`. The version in the prefix changes if a stored format ever changes.
+
+| Key | Contents |
+| --- | --- |
+| `wyllet.v1.recentWallets` | Ids of the last three wallets used, for "Continue with" |
+| `wyllet.v1.activity` | The activity timeline, up to 50 entries per account |
+| `wyllet.v1.customTokens` | Tokens the user imported, per chain (only used with `allowTokenImport`) |
+| `wyllet.v1.burner.key` | Burner wallet private key (only if you use `burnerWallet()`) |
+| `wyllet.v1.burner.key.connected` | Burner connection flag |
+| `wyllet.v1.burner.key.chain` | Burner's last chain id |
+
+The first three are validated on every read. Anything that is not valid JSON or has the wrong shape is discarded, and malformed entries are dropped while valid ones are kept. For example, imported tokens must have a valid address and integer decimals from 0 to 77. Storage access never throws, so private browsing modes and blocked storage do not break the UI.
+
+Wyllet does not store signatures or sessions. Sign-In With Ethereum sessions live on your backend, and Wyllet restores them through your adapter's `getSession`. wagmi keeps its own connection state in storage under its own keys.
+
+## The burner wallet is for development
+
+`burnerWallet()` keeps an unencrypted private key in `localStorage`. The first time it connects on a host that is not local (anything other than `localhost`, `127.0.0.1`, `[::1]`, `0.0.0.0` or a `.local`, `.localhost` or `.test` domain), it logs a console warning telling you to remove it from production builds. It does not block the connection, so keep it out of your production wallet list.
+
+```ts
+const wallets = process.env.NODE_ENV === 'development' ? [...defaultWallets(), burnerWallet()] : defaultWallets()
+```
+
+## Wyllet's UI cannot take down your app
+
+The panel, the toasts and the Island button each render inside their own error boundary. These boundaries wrap Wyllet's own UI only, never your children.
+
+- If the panel crashes, it closes and the error is logged with a `[wyllet]` prefix.
+- If the button crashes, it is replaced with a plain connect button that still opens the panel.
+- Each boundary resets on the next relevant change, such as a new connection status or toast.
+
+One error is deliberately loud: rendering a Wyllet component outside `WylletProvider` throws, because that is a setup mistake you should see in development.
+
+## Hostile onchain data
+
+ENS names and token symbols are controlled by whoever registered them. Wyllet treats them as untrusted:
+
+- ENS names that fail normalization are ignored instead of throwing.
+- Generated monograms escape markup and handle emoji and broken Unicode without throwing.
+- Text is rendered through React, which escapes it. Wyllet does not use `dangerouslySetInnerHTML`.
+
+These cases are covered by `test/hardening.test.tsx`.
+
+## What Wyllet does not do
+
+- **It never holds keys.** Wallets sign. Wyllet only asks them to. The one exception is the development burner wallet described above.
+- **It does not custody funds** or move them on its own. Every transaction comes from your code and is approved in the user's wallet.
+- **It does not proxy RPC.** Calls go straight from the browser to the transports in your wagmi config.
+- **It does not verify signatures.** With Sign-In With Ethereum, your backend's `verify` decides whether a signature is valid.
+
+## Reporting a vulnerability
+
+Please do not open a public issue for security problems. Report them privately through a [GitHub security advisory](https://github.com/wyllet/wyllet/security/advisories/new) or by email to [support@wyllet.dev](mailto:support@wyllet.dev). Include the version, steps to reproduce and the impact you expect.

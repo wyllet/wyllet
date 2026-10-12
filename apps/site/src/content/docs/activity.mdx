@@ -1,0 +1,111 @@
+Every connected account gets an activity timeline in the account panel's Activity tab. Wyllet records connects, network switches and sign-ins on its own. You add transactions, which are tracked live, and any custom entries you want.
+
+## Tracking a transaction
+
+Call `addTransaction` with the hash as soon as you have it:
+
+```tsx
+import { useWriteContract } from 'wagmi'
+import { useWylletActivity } from 'wyllet'
+
+function MintButton() {
+  const { writeContractAsync } = useWriteContract()
+  const { addTransaction } = useWylletActivity()
+
+  async function mint() {
+    const hash = await writeContractAsync({ address, abi, functionName: 'mint', args: [1n] })
+    addTransaction({ hash, description: 'Mint 1 NFT' })
+  }
+
+  return <button onClick={mint}>Mint</button>
+}
+```
+
+Wyllet then:
+
+1. Adds a pending entry to the timeline, titled with your `description`.
+2. Shows a "Transaction pending" toast with the description and a **View** link to the block explorer (when the chain has one).
+3. Waits for the receipt and updates the entry and the toast to "Transaction confirmed" or "Transaction failed".
+
+A reverted transaction, or an error while waiting, is marked failed.
+
+### addTransaction
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `hash` | `Hash` | | Transaction hash |
+| `description` | `string` | Shortened hash | Entry title and toast description |
+| `chainId` | `number` | Connected chain | Chain the transaction was sent on |
+| `account` | `Address` | Connected account | Account the entry belongs to |
+| `toast` | `boolean` | `true` | Set `false` to track without toasts |
+
+It returns `true` when the transaction is tracked, and `false` when no account or chain is known. Pass `account` and `chainId` explicitly if the wallet might disconnect before you call it.
+
+Calling it again with the same hash replaces the earlier entry instead of adding a second one.
+
+### Reloads and timeouts
+
+- **After a reload.** When the provider mounts, Wyllet resumes watching transactions that are still pending and less than 24 hours old. These resumed watches update the timeline without toasts.
+- **After 30 minutes.** If no receipt arrives within 30 minutes, Wyllet stops watching and dismisses the pending toast. The entry stays pending, because the transaction may still be mined or may have been dropped. It is not marked failed.
+
+## Custom entries
+
+`log` adds your own entry to the current account's timeline.
+
+```tsx
+const { log } = useWylletActivity()
+
+log({ title: 'Staked 10 ETH', status: 'success' })
+log({ title: 'Joined the allowlist', description: 'Season 2' })
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `title` | `string` | | Entry title |
+| `description` | `string` | | Optional detail |
+| `status` | `'pending' \| 'success' \| 'failed' \| 'info'` | `'info'` | Sets the entry's icon |
+| `account` | `Address` | Connected account | Account the entry belongs to |
+
+The entry is tagged with the connected chain. `log` returns `false` when no account is known, and `true` otherwise. It does not show a toast. Use [toasts](/docs/toasts) for that.
+
+## Automatic entries
+
+| Event | Entry |
+| --- | --- |
+| Connect | "Connected" followed by the connector name. Restored sessions after a reload are not logged |
+| Disconnect | "Disconnected", on the account that was connected |
+| Network switch | "Switched to" followed by the chain name |
+| Sign-in | "Signed in", after a successful [SIWE](/docs/siwe) step in the panel |
+
+All titles come from the [messages](/docs/i18n) object, so you can rename or translate them.
+
+## useWylletActivity
+
+```tsx
+const { activity, addTransaction, log, clearActivity } = useWylletActivity()
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `activity` | `ActivityItem[]` | Entries for the connected account, newest first. Empty when disconnected |
+| `addTransaction` | `(tx) => boolean` | Track a transaction |
+| `log` | `(entry) => boolean` | Add a custom entry |
+| `clearActivity` | `() => void` | Remove every entry for the connected account |
+
+## ActivityItem
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Unique id. For transactions, the hash |
+| `kind` | `'transaction' \| 'connect' \| 'disconnect' \| 'network' \| 'signIn' \| 'custom'` | Entry type (`ActivityKind`) |
+| `title` | `string` | Entry title |
+| `description` | `string` | Optional detail |
+| `status` | `'pending' \| 'success' \| 'failed' \| 'info'` | Current status (`ActivityStatus`) |
+| `account` | `Address` | Account the entry belongs to, lower-cased |
+| `chainId` | `number` | Optional chain |
+| `hash` | `Hash` | Transaction hash, for transactions |
+| `timestamp` | `number` | Creation time in milliseconds |
+
+## Storage
+
+The timeline is stored in the browser's `localStorage` under `wyllet.v1.activity`. Each account keeps its newest 50 entries, and older ones are dropped. Entries never leave the browser. Stored data is validated when it is read, so malformed entries are ignored.

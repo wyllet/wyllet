@@ -1,0 +1,162 @@
+Most Wyllet integrations are now written with an AI coding assistant. This page gives your assistant everything it needs: where to read the docs, a prompt to start from, and the rules that keep generated code correct.
+
+## Give your assistant the docs
+
+Every page on this site is available in a form built for language models.
+
+| Resource | What it contains |
+| --- | --- |
+| [`/llms.txt`](/llms.txt) | An index of every doc page and post, with one-line summaries and links to their Markdown versions |
+| [`/llms-full.txt`](/llms-full.txt) | The complete documentation in one plain-text file |
+| `<page>.md` | The Markdown version of any doc or post, for example [`/docs/quick-start.md`](/docs/quick-start.md) |
+| `Accept: text/markdown` | Requesting any doc or post URL with this header returns Markdown instead of HTML |
+
+Tools that can fetch URLs (Claude Code, Cursor, Copilot agent mode, ChatGPT with browsing) can read `/llms-full.txt` directly. For tools that can't, copy a page with the **Copy as Markdown** button at the top of every doc and paste it into the chat.
+
+<Callout>
+
+Assistants that support custom documentation sources, such as Cursor's `@Docs`, can index `https://wyllet.dev/llms-full.txt` once and reuse it in every chat.
+
+</Callout>
+
+## A prompt to start from
+
+Paste this into your assistant and fill in the parts in brackets.
+
+```text
+Add the Wyllet wallet connector to this [Next.js App Router | Vite + React] app.
+
+Read https://wyllet.dev/llms-full.txt first and follow it exactly. Wyllet is built on wagmi v3 and viem 2.
+
+Requirements:
+- Chains: [mainnet, base] (the first chain is the default)
+- WalletConnect project ID from the env var [NEXT_PUBLIC_WC_PROJECT_ID]
+- Put the connect button in [the site header]
+- Theme: [obsidianTheme with accentColor '#…' | light/dark pair following the OS]
+- [Optional: Sign-In With Ethereum against my existing /api/auth routes]
+
+Rules:
+- Install: wyllet wagmi viem @tanstack/react-query, plus @walletconnect/ethereum-provider because a project ID is set.
+- Use getDefaultConfig from wyllet for the wagmi config. Do not install or configure RainbowKit, ConnectKit or Web3Modal.
+- Providers go in a 'use client' component, nested WagmiProvider > QueryClientProvider > WylletProvider.
+- Do not import any CSS. Wyllet injects its own styles.
+- Only use props and hooks documented on wyllet.dev. Do not invent options.
+```
+
+## Rules for a correct integration
+
+These are the mistakes assistants make most often. Each rule is checked against the library source.
+
+### Packages
+
+- Install `wyllet` together with its peers: `wagmi`, `viem`, `@tanstack/react-query`, `react` and `react-dom`. Wyllet has no other runtime dependencies.
+- Install `@walletconnect/ethereum-provider` only when `walletConnectProjectId` is set. It is an optional peer.
+- Wyllet requires wagmi v3. Tutorials written for wagmi v2 use APIs that have since changed, so prefer these docs and the wagmi v3 reference.
+
+### Providers and client components
+
+- The package ships with a `'use client'` directive. Call `getDefaultConfig()`, theme presets such as `obsidianTheme()` and `withDefaultTokens()` from client modules only.
+- Nest the providers in this order: `WagmiProvider`, then `QueryClientProvider`, then `WylletProvider`. Every Wyllet component and hook must render inside `WylletProvider`.
+- In Next.js, create the `QueryClient` inside `useState` in the providers component, and set `appUrl` in `getDefaultConfig()` because there is no `window` on the server.
+- Do not import a stylesheet. Styles are injected automatically. `injectStyles={false}` plus `import 'wyllet/styles.css'` is only for apps that load styles themselves.
+
+### Configuration
+
+- The order of `chains` is the priority order, and the first chain is the default. Use `customChain()` for chains that `viem/chains` doesn't include.
+- `getDefaultConfig()` accepts any wagmi `createConfig()` option except `chains`, `transports` and `connectors`, which it builds. Pass your own RPC URLs through `transports` in production.
+- With a hand-written `createConfig()`, pass `wallets`, `appInfo` and `walletConnectProjectId` to `WylletProvider`, include `walletConnect({ showQrModal: false })`, and add `burner()` to the connectors if you use `burnerWallet()`.
+- `burnerWallet()` is for local development only. It keeps a private key in `localStorage`.
+
+### Opening the panel
+
+- `useWylletButton()` takes an element: `open(e.currentTarget)` or `openAccount(el, 'activity')`.
+- `useWyllet()` takes an options object: `openConnect({ anchor: e.currentTarget })` or `openTab('networks', { anchor })`.
+- The popover presentation needs an anchor element. Without one it falls back to a modal.
+- The keyboard shortcut is off until you pass `shortcut="mod+k"`.
+
+### Sign-In With Ethereum
+
+- The auth adapter needs `getNonce`, `verify` and `signOut`, and optionally `getSession`. Verify the signature and the nonce on your server, never only in the browser.
+- Switching accounts or disconnecting signs the user out automatically. Don't add your own listener for that.
+
+### Styling
+
+- Change colors and radii through theme options or `overrides`, not by targeting internal class names.
+- To override `--wy-*` variables from your own stylesheet, use a selector at least as specific as `:root [data-wyllet]`.
+
+## A complete reference implementation
+
+This is the smallest correct Next.js App Router setup. It is a good target to compare generated code against.
+
+```ts title="lib/wagmi.ts"
+import { base, mainnet } from 'viem/chains'
+import { getDefaultConfig } from 'wyllet'
+
+export const config = getDefaultConfig({
+  appName: 'My dApp',
+  appUrl: 'https://my-dapp.xyz',
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID,
+  chains: [mainnet, base],
+  ssr: true,
+})
+```
+
+```tsx title="app/providers.tsx"
+'use client'
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState, type ReactNode } from 'react'
+import { WagmiProvider } from 'wagmi'
+import { obsidianTheme, WylletProvider } from 'wyllet'
+import { config } from '@/lib/wagmi'
+
+export function Providers({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient())
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <WylletProvider theme={obsidianTheme({ accentColor: '#48ECD2' })} shortcut="mod+k">
+          {children}
+        </WylletProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
+```
+
+```tsx title="app/layout.tsx"
+import type { ReactNode } from 'react'
+import { WylletButton } from 'wyllet'
+import { Providers } from './providers'
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>
+          <header>
+            <WylletButton />
+          </header>
+          {children}
+        </Providers>
+      </body>
+    </html>
+  )
+}
+```
+
+## Check the result
+
+Before you accept generated code, check that:
+
+1. `wyllet` appears in `package.json` with `wagmi` v3 and `viem` v2, and no other wallet connector library was added.
+2. The providers file starts with `'use client'` and nests the three providers in the right order.
+3. There is no Wyllet CSS import.
+4. The button opens the panel, installed wallets appear under **Detected**, and the WalletConnect option shows a QR code once a project ID is set.
+5. Every prop and hook used appears in the [Provider](/docs/provider), [Hooks](/docs/hooks) or [Components](/docs/components) reference.
+
+## Related
+
+- [Quick start](/docs/quick-start)
+- [Next.js](/docs/nextjs)
+- [Migrate from RainbowKit](/docs/migrate-from-rainbowkit)

@@ -1,0 +1,109 @@
+`<WylletButton>` is the Wallet Island: one button that changes with the connection state. When disconnected it is a call to action; when connected it shows the account's avatar, name, network and balance, and opens the account panel.
+
+## Usage
+
+```tsx
+import { WylletButton } from 'wyllet'
+
+<WylletButton />
+<WylletButton size="lg" display="compact" label="Enter app" />
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `label` | `string` | `messages.connect` ("Connect") | Text shown while disconnected. |
+| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Button height and text size. |
+| `display` | `'full' \| 'compact' \| 'avatar'` | `'full'` | What the connected button shows. `full`: avatar, name and balance. `compact`: avatar and name. `avatar`: avatar only. |
+| `className` | `string` | None | Extra class names, added after `classNames.island`. |
+
+## States
+
+The button renders differently depending on the connection.
+
+| State | What it shows | On click |
+| --- | --- | --- |
+| Before mount | A hidden, disabled placeholder that keeps the button's space. | Nothing. |
+| Disconnected | Wallet icon, the `label`, and the shortcut hint if `shortcut` is set on the provider. | Opens the connect view. |
+| Connecting or reconnecting | A spinner and "Connecting". | Opens the connect view. |
+| Connected | Avatar with a network badge, the ENS name or shortened address, the native balance (with `display="full"`) and a status dot. | Opens the account view. |
+| Wrong network | An alert badge on the avatar and "Wrong network" in place of the name. No balance. | Opens the account view on the Networks tab. |
+| Needs sign-in | "Verify" in place of the name and a pending status dot. No balance. Only with an `auth` adapter. | Opens the connect view at the sign-in step. |
+
+"Wrong network" means the wallet is on a chain that is not in your wagmi config. The labels come from `messages` (`connect`, `connecting`, `wrongNetwork` and `verify`), so you can rename them. See [Translations](/docs/i18n).
+
+The button passes itself as the anchor when it opens the panel, so the `popover` presentation positions the panel next to it. See [Presentations](/docs/presentations).
+
+If the button ever throws while rendering, Wyllet falls back to a plain connect button so users can still open the panel.
+
+## Headless: useWylletButton
+
+`useWylletButton()` returns the same state that powers `<WylletButton>`, so you can build your own trigger with full control over markup and styles.
+
+```tsx
+import { useWylletButton } from 'wyllet'
+
+export function ConnectButton() {
+  const { mounted, account, chain, authStatus, open } = useWylletButton()
+
+  if (!mounted) return null
+
+  if (!account) {
+    return <button onClick={(e) => open(e.currentTarget)}>Connect wallet</button>
+  }
+
+  return (
+    <button onClick={(e) => open(e.currentTarget)}>
+      {chain?.unsupported ? 'Wrong network' : authStatus === 'unauthenticated' ? 'Verify' : account.displayName}
+      {account.balance && ` · ${account.balance.formatted} ${account.balance.symbol}`}
+    </button>
+  )
+}
+```
+
+### Return value
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `mounted` | `boolean` | `false` during server rendering and the first client render. Render a placeholder until it is `true` to avoid hydration mismatches. |
+| `status` | `'disconnected' \| 'connecting' \| 'reconnecting' \| 'connected'` | wagmi's connection status. |
+| `account` | `object \| undefined` | Set only when connected. See below. |
+| `chain` | `object \| undefined` | Set only when connected. See below. |
+| `authStatus` | `'loading' \| 'unauthenticated' \| 'authenticated' \| undefined` | Sign-in status for the connected account. `undefined` when no `auth` adapter is configured. |
+| `open` | `(anchor?: Element \| null) => void` | Opens the connect view when disconnected or not signed in, otherwise the account view. |
+| `openConnect` | `(anchor?: Element \| null) => void` | Opens the connect view. |
+| `openAccount` | `(anchor?: Element \| null, tab?: AccountTab) => void` | Opens the account view, optionally on a tab: `'tokens'`, `'activity'` or `'networks'`. |
+
+`account` contains:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `address` | `Address` | The connected address. |
+| `displayName` | `string` | The ENS name if there is one, otherwise the shortened address. |
+| `ensName` | `string \| null \| undefined` | The ENS name, when ENS is enabled and resolved. |
+| `balance` | `object \| undefined` | Native balance: `formatted` (string), `symbol`, `value` (bigint) and `decimals`. |
+
+`chain` contains:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `number` | The connected chain id. |
+| `name` | `string` | The chain name, or "Chain" followed by the id when the chain is not in your config. |
+| `unsupported` | `boolean` | `true` when the chain is not in your wagmi config. |
+
+<Callout>
+
+The open functions here take the anchor element directly, as in `open(e.currentTarget)`. The functions returned by `useWyllet()` take an options object instead, as in `openConnect({ anchor: e.currentTarget })`. See [Hooks](/docs/hooks).
+
+</Callout>
+
+## Styling
+
+The button uses the `islandBackground`, `islandText` and `shadows.island` theme tokens while connected, and the accent color while disconnected. Change them through your theme, or add classes with `className` or `classNames.island`. See [Theming](/docs/theming) and [Class names](/docs/class-names).
+
+## Related
+
+- [Presentations](/docs/presentations)
+- [ConnectGate](/docs/connect-gate)
+- [Hooks](/docs/hooks)
