@@ -368,6 +368,10 @@ export const css = /* css */ `
   background:linear-gradient(90deg,transparent,var(--wy-colors-surface) 16px)}
 .wy-token-row:hover .wy-row-tools,.wy-row-tools:focus-within{opacity:1;pointer-events:auto}
 @media (hover:none){.wy-row-tools{position:static;transform:none;opacity:1;pointer-events:auto;background:none;padding-left:0}}
+.wy-embed{display:block;width:100%;max-width:420px}
+.wy-embed .wy-surface{position:relative;width:100%;animation:none}
+.wy-embed-fill{height:100%}
+.wy-embed-fill .wy-surface{height:100%}
 .wy-danger-hover:hover{color:var(--wy-colors-danger);background:color-mix(in srgb, var(--wy-colors-danger) 12%, transparent)}
 .wy-add-row{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;margin-top:8px;border-radius:var(--wy-radii-card);font-size:13px;font-weight:600;color:var(--wy-colors-text-secondary);
   border:1px dashed var(--wy-colors-border);transition:color .15s,border-color .15s,background .15s}
