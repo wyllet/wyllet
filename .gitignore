@@ -7,5 +7,6 @@ dist
 coverage
 packages/wyllet/README.md
 packages/wyllet/LICENSE
+packages/wyllet/CHANGELOG.md
 *.tgz
 *.zip
