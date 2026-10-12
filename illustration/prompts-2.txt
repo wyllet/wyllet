@@ -1,0 +1,26 @@
+WYLLET MASCOT EXPRESSIONS, SET 2 (4 images)
+Reference image: attach logo.png. Keep the character identical; change only the eyes (and the lid angle where stated).
+
+GLOBAL STYLE (apply to all 4)
+A single character render of the Wyllet mascot: a small rounded box-shaped wallet with a hinged lid, made of soft-touch matte mint vinyl (#48ECD2 base, #2FCFB6 in shadow), smooth bevelled edges, premium designer-toy finish. Face = black eye shapes only. Three-quarter view facing slightly left, matching the reference. Soft studio lighting, key light upper left, soft contact shadow. Background fully transparent (PNG). Centered, character fills about 70% of the frame. Square 2048 x 2048.
+Do not add: mouth, eyebrows, nose, limbs, text, logos, sparkles, coins, crypto symbols, glossy shine, outlines, cartoon line art.
+
+IMAGE 1: happy
+Eyes: two upward arcs (like "^ ^"), thick black strokes with rounded ends, as if smiling with the eyes. Lid open about 30 degrees. Body tilted slightly, as if mid-bounce.
+Save as: output/mascot-happy.png
+Used for: success toasts, newsletter and changelog posts.
+
+IMAGE 2: sleepy
+Eyes: two short downward arcs (closed, resting), thin rounded strokes. Lid nearly closed (about 5 degrees). The mood comes only from the eyes and the lid. Body settled low and still.
+Save as: output/mascot-sleepy.png
+Used for: "no activity yet" empty state, disconnected state.
+
+IMAGE 3: wink
+Eyes: the left eye is the normal vertical pill from the reference; the right eye is a short upward arc (closed in a wink). Lid open about 25 degrees, slightly tilted toward the winking side. Playful and friendly.
+Save as: output/mascot-wink.png
+Used for: tips and "did you know" callouts in docs.
+
+IMAGE 4: worried
+Eyes: two vertical pills that are smaller and pushed close together, both looking up and to the left, with the inner top corners slightly lowered. Lid barely open (about 10 degrees). Body shifted back a little, nervous.
+Save as: output/mascot-worried.png
+Used for: error states, "transaction failed", security warnings.

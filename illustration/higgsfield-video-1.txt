@@ -1,0 +1,28 @@
+WYLLET HERO VIDEO, TEST 1 (Higgsfield, image to video)
+
+Goal: a 5 second loopable clip of the mascot for the website hero and social posts. This is a test, so keep it simple. Two variants below; try A first.
+
+SETUP (both variants)
+- Mode: Image to Video.
+- Start frame: logo-transparent.png placed centred on a solid deep ink green background #06110F (export it as a 1920 x 1080 PNG first, mascot about 45% of the frame height, slightly right of centre).
+- Aspect ratio: 16:9 (also try 9:16 for social, mascot centred).
+- Duration: 5 seconds.
+- Motion strength: low to medium. The character must stay on-model.
+
+VARIANT A: "Lid pop" (best for the website)
+Prompt:
+A small mint-green matte vinyl toy shaped like a rounded wallet box with a hinged lid and two black pill-shaped eyes sits on a dark green studio background. It does a small anticipatory squash, then hops a few centimetres up. At the top of the hop the lid flips open and four small blank rounded square tiles (white, lavender, periwinkle, black) pop out in a gentle arc and hover beside it. The toy lands softly with a tiny squash and stretch, the lid settles half open, and the eyes blink once. Soft studio key light from the upper left, soft contact shadow that shrinks during the hop and grows on landing. Smooth, physical, satisfying motion, like a premium product animation.
+Camera: static, locked-off, no zoom.
+Negative prompt: text, logos, coins, crypto symbols, sparkles, particles, glow trails, extra limbs, mouth, face changes other than the blink, melting, morphing shape, colour shift, flicker, camera shake, background change, people.
+
+VARIANT B: "Slow orbit" (best for social)
+Prompt:
+A small mint-green matte vinyl toy shaped like a rounded wallet box with a hinged lid and two black pill-shaped eyes sits still on a dark green studio surface. The camera slowly orbits about 30 degrees around it from left to right while the lid gently opens and closes once, like breathing. The eyes glance toward the camera at the end. Soft studio lighting from the upper left, soft contact shadow, shallow depth of field, calm premium product-shot mood.
+Camera: slow orbit right, 30 degrees, ease in and out.
+Negative prompt: text, logos, coins, crypto symbols, sparkles, particles, neon, extra limbs, mouth, morphing, melting, colour shift, flicker, background change, fast motion, people.
+
+CHECK BEFORE KEEPING A RESULT
+- The toy keeps the same shape, mint colour and two pill eyes for all 5 seconds.
+- No text or symbols appear anywhere.
+- The first and last frames are close enough to loop (for Variant A, trim to the moment it lands if needed).
+Save keepers as: output/hero-video-a.mp4 / output/hero-video-b.mp4 (plus a 9:16 version with -vertical in the name).

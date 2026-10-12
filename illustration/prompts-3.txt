@@ -1,0 +1,22 @@
+WYLLET BLOG COVERS (4 images)
+Reference image: attach logo.png for the character. These are editorial covers, not ads.
+
+GLOBAL STYLE (apply to all 4)
+Wide editorial cover, 2400 x 1260 (about 1.9:1), for a developer blog. Calm, premium, minimal, lots of negative space on the left half for a title that will be added later in code (keep the left 45% empty and evenly lit). Background: deep ink green #06110F with a very soft radial mint glow (#48ECD2 at 15% opacity) behind the subject. The Wyllet mascot (identical to the reference: matte mint vinyl wallet-box with a hinged lid and two black pill eyes, no mouth) sits in the right half. Physical, tactile objects with a soft matte finish, studio lighting from the upper left, soft shadows, shallow depth of field. Colour palette limited to ink #06110F, mint #48ECD2, lime #C6F432 as a tiny accent, off-white #F1F8F6.
+Do not add: any text or numbers, real brand logos, coins, bitcoin or ethereum symbols, blockchain cubes, circuit boards, holograms, neon grids, chrome, lens flares, purple-blue gradients, busy backgrounds, people.
+
+COVER 1: Introducing Wyllet 1.0
+The mascot with its lid wide open and surprised round eyes. Four small rounded square tiles in plain colours (white, lavender #AB9FF2, periwinkle #8697FF, black) float out of the open lid in a gentle arc, as if just released, each tile blank (no logos). The tiles cast small soft shadows on the background plane.
+Save as: output/blog-introducing-wyllet.png
+
+COVER 2: Zero runtime dependencies
+The mascot with calm eyes sits alone on a perfectly clean matte surface. Next to it, an empty shallow tray made of the same mint material, with nothing in it, emphasising "nothing extra". One tiny lime-green check-mark shaped object (a small rounded 3D tick) rests inside the tray. Extremely minimal, quiet, confident.
+Save as: output/blog-zero-runtime-dependencies.png
+
+COVER 3: Pretty QR codes that still scan
+The mascot with "cool" half-lidded eyes leans against a large off-white square card standing upright. The card shows an abstract QR-like pattern of rounded black squares with three rounded finder squares in the corners (a stylised pattern, not a real scannable code). The pattern is crisp and precise; a soft shadow falls behind the card.
+Save as: output/blog-qr-codes-that-scan.png
+
+COVER 4: Why WalletConnect kept opening the wrong wallet
+A modern smartphone lying at a slight angle, screen showing only a soft blank mint glow (no UI text). The mascot with worried eyes peeks from behind the phone, lid half open. Several blank rounded app-icon tiles sit in a neat row on the phone screen, one of them gently highlighted with a lime outline.
+Save as: output/blog-all-wallets-on-mobile.png

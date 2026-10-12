@@ -9,3 +9,7 @@ packages/wyllet/README.md
 packages/wyllet/LICENSE
 *.tgz
 *.zip
+
+# Full-size generated illustration originals (optimized copies live in apps/site/public/illustrations)
+illustration/output/*
+!illustration/output/.gitkeep

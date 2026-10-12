@@ -1,0 +1,26 @@
+WYLLET MASCOT EXPRESSIONS, SET 1 (4 images)
+Reference image: attach logo.png. Keep the character identical; change only the eyes (and the lid angle where stated).
+
+GLOBAL STYLE (apply to all 4)
+A single character render of the Wyllet mascot: a small rounded box-shaped wallet with a hinged lid, made of soft-touch matte mint vinyl (#48ECD2 base, #2FCFB6 in shadow), smooth bevelled edges, subtle subsurface softness like a premium designer toy. Face = two vertical black pill-shaped eyes with a small soft highlight, nothing else. Three-quarter view facing slightly left, exactly like the reference. Soft studio lighting, key light upper left, gentle fill, soft contact shadow under the box. Background fully transparent (PNG). Centered, the character fills about 70% of the frame. Square 2048 x 2048.
+Do not add: mouth, eyebrows, nose, arms, legs, text, logos, sparkles, coins, crypto symbols, glossy plastic shine, reflections of a room, gradients, outlines, cartoon line art.
+
+IMAGE 1: calm
+Eyes: the same two vertical pills as the reference, slightly shorter and softer, evenly spaced, looking straight ahead. The lid rests a little more closed than the reference (about 15 degrees open). Relaxed, quiet, trustworthy mood.
+Save as: output/mascot-calm.png
+Used for: docs empty states, "everything is fine" toasts.
+
+IMAGE 2: cool
+Eyes: two horizontal pills narrowed into relaxed half-lidded slits, flat top edge, like someone unbothered. Lid tipped back at a confident angle (about 35 degrees open). Body rotated a few degrees more toward the camera. Effortless, confident mood.
+Save as: output/mascot-cool.png
+Used for: features page hero, social posts.
+
+IMAGE 3: rude (grumpy, not angry)
+Eyes: the two pills cut diagonally on top so each eye slopes down toward the center, giving a grumpy "seriously?" look. Lid almost shut (about 5 degrees open). Body leaning slightly back. Funny and unimpressed, never aggressive or scary.
+Save as: output/mascot-rude.png
+Used for: 404 page, "wrong network" illustration.
+
+IMAGE 4: surprised
+Eyes: two perfect black circles, larger than the reference, with a crisp small highlight. Lid popped wide open (about 60 degrees), as if something just jumped out. Body lifted a few millimetres off the ground with a softer, wider shadow. Delighted surprise.
+Save as: output/mascot-surprised.png
+Used for: "connected!" success states, launch posts.

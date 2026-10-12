@@ -1,0 +1,22 @@
+WYLLET LANDING PAGE SPOT ILLUSTRATIONS (4 images)
+Reference image: attach logo.png for the character. Small "spot" illustrations that sit next to sections of the landing page.
+
+GLOBAL STYLE (apply to all 4)
+Square 1600 x 1600, transparent background (PNG). One simple, readable idea per image, composed so it still reads at 240px wide. The Wyllet mascot is identical to the reference (matte mint vinyl wallet-box, hinged lid, two black pill eyes, no mouth). Objects are soft matte, slightly rounded, like premium toys on a desk. Studio lighting from the upper left, one soft contact shadow, no environment. Palette: mint #48ECD2, ink #06110F, lime #C6F432 as a small accent, off-white #F1F8F6.
+Do not add: text, real brand logos, coins, crypto symbols, holograms, circuit patterns, neon, chrome, glossy plastic, multiple light sources, background scenery.
+
+SPOT 1: "Open it your way" (panel presentations)
+Three small off-white rounded rectangles, like miniature app windows, arranged in a staggered row: one with a tall panel on its right side (drawer), one with a small card hanging under its top-right corner (popover), one with a card centred (modal). The panels are mint. The mascot with calm eyes sits in front of them, looking at the viewer.
+Save as: output/spot-presentations.png
+
+SPOT 2: "Nothing new in your lockfile" (security)
+The mascot with cool eyes stands next to a small, solid, rounded padlock made of the same matte mint material, its shackle closed. A small lime tag hangs from the padlock (blank, no text). Calm and solid, not alarmist.
+Save as: output/spot-security.png
+
+SPOT 3: "Keyboard first"
+Three chunky rounded keyboard keys in off-white with soft mint edges, in a short row, completely blank caps with nothing printed on them. The mascot with happy eyes is perched on top of the middle key, as if it just pressed it.
+Save as: output/spot-keyboard.png
+
+SPOT 4: "Your chains and tokens, in your order"
+A neat vertical stack of five thick rounded discs (like poker-chip-sized tokens, but completely blank, no symbols) in mint, off-white, lime, ink and mint, stacked slightly offset. The mascot with wink eyes is placing the top disc on the stack with its lid acting like a little scoop.
+Save as: output/spot-chains-tokens.png
