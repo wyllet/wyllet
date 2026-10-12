@@ -111,6 +111,8 @@ export interface WylletContextValue {
   auth: AuthController
   recentWalletIds: string[]
   markRecent(walletId: string): void
+  /** True inside `<WylletEmbed>`: views render inline, so there is nothing to close. */
+  embedded?: boolean
 }
 
 export const WylletContext = createContext<WylletContextValue | null>(null)

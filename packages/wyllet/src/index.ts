@@ -7,6 +7,7 @@ export type { AccountTab, Appearance, CustomAvatarProps, OpenOptions, PanelView,
 // Components
 export { WylletButton, useWylletButton, type WylletButtonProps, type WylletButtonState } from './components/WylletButton'
 export { ConnectGate, type ConnectGateProps, type GateReason } from './components/ConnectGate'
+export { WylletEmbed, type WylletEmbedProps } from './components/WylletEmbed'
 export { Avatar, addressGradient, type AvatarProps } from './components/Avatar'
 export { ChainIcon, type ChainIconProps } from './components/ChainIcon'
 export { TokenIcon, type TokenIconProps } from './components/TokenIcon'
