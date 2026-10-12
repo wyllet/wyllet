@@ -54,7 +54,7 @@ export interface Appearance {
    */
   tokenSort?: 'balance' | 'list'
   /**
-   * "All wallets": a searchable list of ~500 WalletConnect wallets (official logos and deep links from the
+   * "All wallets": a searchable list of the ~570 EVM wallets in the WalletConnect registry (official logos and deep links from the
    * WalletConnect registry), opened from the WalletConnect option. Requires a WalletConnect project id. Default `true`.
    */
   walletDirectory?: boolean

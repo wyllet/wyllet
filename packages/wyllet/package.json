@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "The premium, open-source wallet connector for React dApps. Beautiful by default, customizable to the last pixel.",
   "license": "MIT",
-  "homepage": "https://github.com/wyllet/wyllet#readme",
+  "homepage": "https://wyllet.dev",
   "bugs": {
-    "url": "https://github.com/wyllet/wyllet/issues"
+    "url": "https://github.com/wyllet/wyllet/issues",
+    "email": "support@wyllet.dev"
   },
   "repository": {
     "type": "git",
@@ -99,5 +100,6 @@
     "viem": "^2.57.3",
     "vitest": "^5.0.3",
     "wagmi": "^3.7.7"
-  }
+  },
+  "author": "Wyllet <support@wyllet.dev> (https://wyllet.dev)"
 }
