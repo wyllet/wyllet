@@ -58,7 +58,8 @@ export function getDefaultConfig<const chains extends readonly [Chain, ...Chain[
   const url = appUrl ?? (typeof window !== 'undefined' ? window.location.origin : undefined)
   const connectors: CreateConnectorFn[] = []
 
-  if (walletConnectProjectId && wallets.some((w) => w.walletConnect)) {
+  // Browser only: WalletConnect's SDK needs IndexedDB, and there are no wallet connections during server rendering.
+  if (walletConnectProjectId && typeof window !== 'undefined' && wallets.some((w) => w.walletConnect)) {
     connectors.push(
       walletConnect({
         projectId: walletConnectProjectId,
