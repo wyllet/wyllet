@@ -8,5 +8,10 @@
     "dev": "pnpm --filter playground dev",
     "test": "pnpm --filter wyllet test",
     "typecheck": "pnpm -r typecheck"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "^0.28.1"
+    }
   }
 }
