@@ -18,7 +18,7 @@ export function PanelHeader({
   onBack?(): void
   onClose?(): void
 }) {
-  const { t } = useWylletContext()
+  const { t, embedded } = useWylletContext()
   return (
     <header className="wy-head">
       {onBack ? (
@@ -31,7 +31,7 @@ export function PanelHeader({
       <h2 id={titleId} className="wy-head-title">
         {title}
       </h2>
-      {onClose && (
+      {onClose && !embedded && (
         <button type="button" className="wy-icon-btn wy-head-close" onClick={onClose} aria-label={t.close}>
           <CloseIcon size={17} />
         </button>
