@@ -36,7 +36,7 @@ export const css = /* css */ `
   position:relative;display:inline-flex;align-items:center;gap:9px;height:var(--wy-h);padding:0 14px 0 6px;
   border-radius:var(--wy-radii-button);font-family:var(--wy-fonts-body);font-size:14.5px;font-weight:600;letter-spacing:-.01em;
   background:var(--wy-colors-island-background);color:var(--wy-colors-island-text);box-shadow:var(--wy-shadows-island);
-  backdrop-filter:var(--wy-effects-panel-blur);-webkit-backdrop-filter:var(--wy-effects-panel-blur);
+  -webkit-backdrop-filter:var(--wy-effects-panel-blur);backdrop-filter:var(--wy-effects-panel-blur);
   transition:transform .25s var(--wy-spring), box-shadow .25s var(--wy-ease), background .2s;
   white-space:nowrap;isolation:isolate;
 }
@@ -76,12 +76,12 @@ export const css = /* css */ `
 
 /* ================================================================ Layer + surface */
 .wy-layer{position:fixed;inset:0;z-index:2147483000;pointer-events:none}
-.wy-overlay{position:absolute;inset:0;pointer-events:auto;background:var(--wy-colors-overlay);backdrop-filter:var(--wy-effects-overlay-blur);-webkit-backdrop-filter:var(--wy-effects-overlay-blur);animation:wy-fade .3s var(--wy-ease) both}
+.wy-overlay{position:absolute;inset:0;pointer-events:auto;background:var(--wy-colors-overlay);-webkit-backdrop-filter:var(--wy-effects-overlay-blur);backdrop-filter:var(--wy-effects-overlay-blur);animation:wy-fade .3s var(--wy-ease) both}
 .wy-layer[data-state=closed] .wy-overlay{animation:wy-fade-out .24s var(--wy-ease) both}
 .wy-surface{
   position:absolute;pointer-events:auto;display:flex;flex-direction:column;outline:none;overflow:hidden;
   background:var(--wy-colors-background);border-radius:var(--wy-radii-panel);box-shadow:var(--wy-shadows-panel);
-  backdrop-filter:var(--wy-effects-panel-blur);-webkit-backdrop-filter:var(--wy-effects-panel-blur);
+  -webkit-backdrop-filter:var(--wy-effects-panel-blur);backdrop-filter:var(--wy-effects-panel-blur);
   overflow:clip; /* focus can never scroll the shell; only .wy-scroll areas scroll */
 }
 .wy-surface-glow{position:absolute;inset:0 0 auto;height:180px;pointer-events:none;z-index:0;opacity:calc(var(--wy-effects-glow) * 1.4);
@@ -101,7 +101,7 @@ export const css = /* css */ `
 .wy-mode-drawer .wy-scroll-inner > .wy-step{margin-block:auto;padding-bottom:48px}
 
 /* popover: anchored dropdown */
-.wy-mode-popover .wy-overlay{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
+.wy-mode-popover .wy-overlay{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
 .wy-mode-popover .wy-surface{width:392px;animation:wy-pop .34s var(--wy-spring) both}
 .wy-mode-popover[data-state=closed] .wy-surface{animation:wy-pop-out .18s var(--wy-ease) both}
 .wy-mode-popover .wy-body{max-height:min(520px, calc(var(--wy-avail, 100dvh) - 190px))}
@@ -310,7 +310,7 @@ export const css = /* css */ `
 .wy-card-top,.wy-card-bottom{position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .wy-card-bottom{align-items:flex-end}
 .wy-card-avatar{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
-.wy-card-chain{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 5px;border-radius:99px;font-size:11.5px;font-weight:600;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.wy-card-chain{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 5px;border-radius:99px;font-size:11.5px;font-weight:600;background:rgba(0,0,0,.25);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .wy-card-balance{font-size:27px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.15}
 .wy-card-balance small{font-size:13px;font-weight:600;opacity:.75;letter-spacing:0}
 .wy-card-id{text-align:right;min-width:0}
@@ -428,7 +428,7 @@ export const css = /* css */ `
 .wy-toast{
   pointer-events:auto;display:flex;align-items:center;gap:11px;padding:8px 8px 8px 10px;min-height:48px;max-width:100%;
   border-radius:calc(var(--wy-radii-panel) + 4px);background:var(--wy-colors-island-background);color:var(--wy-colors-island-text);box-shadow:var(--wy-shadows-toast);
-  backdrop-filter:var(--wy-effects-panel-blur);-webkit-backdrop-filter:var(--wy-effects-panel-blur);
+  -webkit-backdrop-filter:var(--wy-effects-panel-blur);backdrop-filter:var(--wy-effects-panel-blur);
   animation:wy-island-in .5s var(--wy-spring) both;transform-origin:center;
 }
 .wy-toaster[class*=bottom] .wy-toast{animation-name:wy-island-in-b}
