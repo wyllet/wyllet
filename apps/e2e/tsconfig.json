@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    // Type-check against the library source, so `pnpm typecheck` works before a build.
+    // The Vite build (vite.config.ts) still uses the published output in packages/wyllet/dist.
+    "paths": { "wyllet": ["../../packages/wyllet/src/index.ts"] }
+  },
+  "include": ["src", "tests", "vite.config.ts", "playwright.config.ts"]
+}

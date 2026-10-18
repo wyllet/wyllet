@@ -7,7 +7,8 @@
     "build": "pnpm --filter wyllet build",
     "dev": "pnpm --filter playground dev",
     "test": "pnpm --filter wyllet test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test:e2e": "pnpm --filter e2e build && pnpm --filter e2e test"
   },
   "pnpm": {
     "overrides": {
