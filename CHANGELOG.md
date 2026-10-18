@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased (1.2.0): Reliability
+
+- **Strict CSP:** new `nonce` prop adds your CSP nonce to the styles Wyllet injects. New `injectTheme={false}` plus prebuilt `wyllet/themes/*.css` files (and `themeStylesheet()` for custom themes) let a site run with `style-src 'self'` and no inline styles at all. Server-rendered markup no longer uses inline `style` attributes, which strict policies block: the button and gate hide until mounted through an attribute, and avatars are drawn in SVG.
+- **Fix:** the blur behind the modal and on badges disappeared when `wyllet/styles.css` went through Lightning CSS (Vite 8, Next.js with Turbopack), because the prefixed `-webkit-backdrop-filter` came after the standard property. The order is fixed, and a browser test now checks the blur survives a production build.
+- **Browser tests in CI:** Playwright runs connect, rejection and retry, silent reconnect, account and chain changes (including unsupported chains), network switching (approved, declined and failed) and both kinds of disconnect, in every presentation, in Chrome, Firefox, Safari and phone profiles, under a strict CSP.
+- **Compatibility matrix:** [COMPATIBILITY.md](https://github.com/wyllet/wyllet/blob/main/COMPATIBILITY.md) lists what is tested for each browser and wallet, automated and on real devices. Every built-in wallet's EIP-6963 identity is tested for detection and connection, and its phone link is checked against the WalletConnect registry.
+- **Benchmarks:** [BENCHMARKS.md](https://github.com/wyllet/wyllet/blob/main/BENCHMARKS.md) publishes reproducible bundle sizes (pinned esbuild, fixed compression settings) and loading timings. CI fails if the bundle grows past its budget.
+
 ## 1.1.0
 
 - **New: `<WylletEmbed>`** renders the real panel inline, inside your own layout (a connect card, an account sidebar, a live preview), with local navigation that never opens the drawer.
