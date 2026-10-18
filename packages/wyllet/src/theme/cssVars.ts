@@ -1,3 +1,4 @@
+import { obsidianTheme, porcelainTheme } from './presets'
 import type { ColorMode, Theme, ThemeInput } from './types'
 
 const toKebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
@@ -27,7 +28,19 @@ export function isThemePair(input: ThemeInput): input is { light: Theme; dark: T
  * `data-wyllet="<scope>"`. Light/dark pairs follow the OS in `auto` mode.
  */
 export function buildThemeCss(input: ThemeInput, colorMode: ColorMode, scope: string): string {
-  const selector = `[data-wyllet="${scope}"]`
+  return themeCssFor(input, colorMode, `[data-wyllet="${scope}"]`)
+}
+
+/**
+ * The theme as a plain stylesheet for every Wyllet element on the page, for apps that load it as a file
+ * (`<WylletProvider injectTheme={false}>`) so their CSP needs no inline styles. The prebuilt
+ * `wyllet/themes/*.css` files are this function's output for each preset.
+ */
+export function themeStylesheet(input: ThemeInput = { light: porcelainTheme(), dark: obsidianTheme() }, colorMode: ColorMode = 'auto'): string {
+  return themeCssFor(input, colorMode, '[data-wyllet]')
+}
+
+function themeCssFor(input: ThemeInput, colorMode: ColorMode, selector: string): string {
   if (!isThemePair(input)) return `${selector}{${declarations(input)}}`
   if (colorMode === 'light') return `${selector}{${declarations(input.light)}color-scheme:light;}`
   if (colorMode === 'dark') return `${selector}{${declarations(input.dark)}color-scheme:dark;}`

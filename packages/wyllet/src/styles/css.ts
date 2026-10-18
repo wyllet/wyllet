@@ -29,6 +29,8 @@ export const css = /* css */ `
 .wy-spinner{animation:wy-spin .75s linear infinite;flex:none}
 
 /* ================================================================ Island button */
+/* Hidden until mounted, without an inline style (strict CSP). */
+[data-wy-pending]{visibility:hidden}
 .wy-island{
   --wy-h:42px;
   position:relative;display:inline-flex;align-items:center;gap:9px;height:var(--wy-h);padding:0 14px 0 6px;
@@ -62,12 +64,13 @@ export const css = /* css */ `
 
 /* ================================================================ Avatar / icons */
 .wy-avatar{display:inline-block;flex:none;border-radius:999px;overflow:hidden;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-.wy-avatar img{width:100%;height:100%;object-fit:cover}
+.wy-avatar > svg{display:block}
+.wy-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .wy-chain-icon{flex:none;object-fit:contain}
 .wy-wallet-icon{display:inline-flex;flex:none;border-radius:var(--wy-radii-icon);overflow:hidden;box-shadow:0 0 0 1px var(--wy-colors-border)}
 .wy-wallet-icon img{width:100%;height:100%;object-fit:cover}
 .wy-token-icon{position:relative;display:inline-flex;flex:none}
-.wy-token-icon > img{width:100%;height:100%;object-fit:contain}
+.wy-token-icon > img{display:block;object-fit:contain}
 .wy-token-chain{position:absolute;right:-3px;bottom:-3px;display:flex;border-radius:99px;box-shadow:0 0 0 2px var(--wy-colors-background)}
 .wy-kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:var(--wy-radii-badge);font-size:11px;font-weight:500;color:var(--wy-colors-text-tertiary);background:var(--wy-colors-surface);box-shadow:inset 0 -1px 0 var(--wy-colors-border), 0 0 0 1px var(--wy-colors-border);flex:none}
 

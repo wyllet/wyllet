@@ -46,7 +46,7 @@ export function ConnectGate({ children, requireSupportedChain = true, requireAut
   }[r]
 
   return (
-    <div data-wyllet={scope} className={cx('wy-gate', `wy-gate-${r}`, className)} style={mounted ? undefined : { visibility: 'hidden' }}>
+    <div data-wyllet={scope} className={cx('wy-gate', `wy-gate-${r}`, className)} data-wy-pending={mounted ? undefined : ''}>
       <span className="wy-gate-lock" aria-hidden>
         {content.icon}
       </span>

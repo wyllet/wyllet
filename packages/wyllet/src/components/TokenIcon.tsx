@@ -17,7 +17,7 @@ export interface TokenIconProps {
 export function TokenIcon({ symbol, src, chainId, size = 32, className }: TokenIconProps) {
   const [broken, setBroken] = useState(false)
   return (
-    <span className={cx('wy-token-icon', className)} style={{ width: size, height: size }}>
+    <span className={cx('wy-token-icon', className)}>
       <img src={src && !broken ? src : tokenIconUri(symbol)} alt={symbol} width={size} height={size} onError={() => setBroken(true)} draggable={false} />
       {chainId !== undefined && (
         <span className="wy-token-chain">

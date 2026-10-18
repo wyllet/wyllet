@@ -32,6 +32,7 @@
       }
     },
     "./styles.css": "./dist/styles.css",
+    "./themes/*.css": "./dist/themes/*.css",
     "./package.json": "./package.json"
   },
   "files": [

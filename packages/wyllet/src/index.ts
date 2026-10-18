@@ -34,6 +34,7 @@ export {
   obsidianTheme,
   porcelainTheme,
   terminalTheme,
+  themeStylesheet,
   themeToCssVars,
   type BlurScale,
   type ColorMode,

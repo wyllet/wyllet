@@ -73,8 +73,16 @@ export interface WylletProviderProps {
   disclaimer?: ReactNode
   /** Resolve ENS names and avatars (requires mainnet in your config). Default `true`. */
   ens?: boolean
-  /** Inject Wyllet's stylesheet. Set `false` and import `wyllet/styles.css` yourself for strict CSP. */
+  /** Inject Wyllet's stylesheet. Set `false` and import `wyllet/styles.css` yourself. */
   injectStyles?: boolean
+  /**
+   * Inject the theme's CSS variables. Set `false` and load a `wyllet/themes/*.css` file (or the output of
+   * `themeStylesheet()`) yourself, so a CSP can use `style-src 'self'` with no inline styles. The `theme` and
+   * `colorMode` props then have no effect.
+   */
+  injectTheme?: boolean
+  /** CSP nonce added to the `<style>` elements Wyllet renders, for `style-src 'nonce-…'` policies. */
+  nonce?: string
   onConnect?: (info: { address: Address; chainId: number; connectorId: string; isReconnected: boolean }) => void
   onDisconnect?: () => void
 }
@@ -120,6 +128,8 @@ export function WylletProvider(props: WylletProviderProps) {
     disclaimer,
     ens = true,
     injectStyles = true,
+    injectTheme = true,
+    nonce,
     onConnect,
     onDisconnect,
   } = props
@@ -230,8 +240,16 @@ export function WylletProvider(props: WylletProviderProps) {
 
   return (
     <WylletContext.Provider value={value}>
-      {injectStyles && <style data-wyllet-styles="">{baseCss}</style>}
-      <style data-wyllet-theme={scope}>{themeCss}</style>
+      {injectStyles && (
+        <style data-wyllet-styles="" nonce={nonce}>
+          {baseCss}
+        </style>
+      )}
+      {injectTheme && (
+        <style data-wyllet-theme={scope} nonce={nonce}>
+          {themeCss}
+        </style>
+      )}
       {children}
       <SafeBoundary onError={close} resetKey={view}>
         <WylletPanel />
