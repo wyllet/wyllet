@@ -66,6 +66,6 @@ describe('styled QR scannability', () => {
         return jsQR(pixels, MIN_QR_PX, MIN_QR_PX)?.data !== text
       })
       expect(failures).toEqual([])
-    })
+    }, 30_000) // 80 rasterize-and-decode passes: about 2 s on a laptop, several times that on CI runners
   }
 })
