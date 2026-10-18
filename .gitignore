@@ -10,3 +10,8 @@ packages/wyllet/LICENSE
 packages/wyllet/CHANGELOG.md
 *.tgz
 *.zip
+
+# Playwright
+apps/e2e/test-results
+apps/e2e/playwright-report
+apps/e2e/bench-results

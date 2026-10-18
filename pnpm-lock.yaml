@@ -11,6 +11,49 @@ importers:
 
   .: {}
 
+  apps/e2e:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.104.1
+        version: 5.104.1(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.3.0
+        version: 19.3.0(react@19.3.0)
+      viem:
+        specifier: ^2.57.3
+        version: 2.57.3(typescript@5.9.3)(zod@3.25.76)
+      wagmi:
+        specifier: ^3.7.7
+        version: 3.7.7(@tanstack/react-query@5.104.1)(@types/react@19.3.0)(@walletconnect/ethereum-provider@2.25.0)(react@19.3.0)(typescript@5.9.3)(viem@2.57.3)
+      wyllet:
+        specifier: workspace:^
+        version: link:../../packages/wyllet
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.64.1
+        version: 1.64.1
+      '@types/node':
+        specifier: ^22.20.5
+        version: 22.20.5
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: ^6.1.2
+        version: 6.1.2(vite@8.3.3)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^8.3.3
+        version: 8.3.3(@types/node@22.20.5)(esbuild@0.28.2)
+
   apps/playground:
     dependencies:
       '@tanstack/react-query':
@@ -27,7 +70,7 @@ importers:
         version: 19.3.0(react@19.3.0)
       viem:
         specifier: ^2.57.3
-        version: 2.57.3(typescript@5.9.3)
+        version: 2.57.3(typescript@5.9.3)(zod@3.25.76)
       wagmi:
         specifier: ^3.7.7
         version: 3.7.7(@tanstack/react-query@5.104.1)(@types/react@19.3.0)(@walletconnect/ethereum-provider@2.25.0)(react@19.3.0)(typescript@5.9.3)(viem@2.57.3)
@@ -97,7 +140,7 @@ importers:
         version: 0.1.3
       viem:
         specifier: ^2.57.3
-        version: 2.57.3(typescript@5.9.3)
+        version: 2.57.3(typescript@5.9.3)(zod@3.25.76)
       vitest:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@22.20.5)(jsdom@30.1.2)(vite@8.3.3)
@@ -622,6 +665,14 @@ packages:
     resolution: {integrity: sha512-JcvQkZxvcX2jK+QCclm8+e8HXqtdFW9xV4/kk2aL9Y3dJA2oQVt+pzbv1orkumz3rfx4K9mn9fDoMr1He1yr7Q==}
     dependencies:
       lit: 3.3.0
+
+  /@playwright/test@1.64.1:
+    resolution: {integrity: sha512-IaYGml/nSOiZWROfPtuIL7neuu9qDOZ3TNvNljUIrhDMxiGTgPjzj/g9p9RxpS2tSepPDRY+UwAaEeiKtUvIAg==}
+    engines: {node: '>=20'}
+    hasBin: true
+    dependencies:
+      playwright: 1.64.1
+    dev: true
 
   /@reown/appkit-common@1.8.19(typescript@5.9.3):
     resolution: {integrity: sha512-z5wDrYjUGY7YbM4b14NHVo54WKZ5++PQtGkcsXhiOP39yAVijubBQD8BfHs/Pu2fSFqnqLIFoCVvIEfNWWccRw==}
@@ -3924,26 +3975,6 @@ packages:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
     engines: {node: '>=14.0.0'}
 
-  /ox@0.14.45(typescript@5.9.3):
-    resolution: {integrity: sha512-jpsQ+p0JZh9mKCxxzxz0d5qFHZZg2/O9xW18IpEC/dNXXPVqmDJ0c//9RMz0CILkbSGPA42+cbU0fC/ghwJ03w==}
-    peerDependencies:
-      typescript: '>=5.4.0'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-    dependencies:
-      '@adraffy/ens-normalize': 1.11.1
-      '@noble/ciphers': 1.3.0
-      '@noble/curves': 1.9.1
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      abitype: 1.3.0(typescript@5.9.3)(zod@3.25.76)
-      eventemitter3: 5.0.1
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - zod
-
   /ox@0.14.45(typescript@5.9.3)(zod@3.22.4):
     resolution: {integrity: sha512-jpsQ+p0JZh9mKCxxzxz0d5qFHZZg2/O9xW18IpEC/dNXXPVqmDJ0c//9RMz0CILkbSGPA42+cbU0fC/ghwJ03w==}
     peerDependencies:
@@ -3983,7 +4014,6 @@ packages:
       typescript: 5.9.3
     transitivePeerDependencies:
       - zod
-    optional: true
 
   /ox@0.6.9(typescript@5.9.3):
     resolution: {integrity: sha512-wi5ShvzE4eOcTwQVsIPdFr+8ycyX+5le/96iAJutaZAvCes1J0+RvpEPg5QDPDiaR0XQQAvZVl7AwqQcINuUug==}
@@ -4104,6 +4134,20 @@ packages:
       confbox: 0.1.8
       mlly: 1.8.2
       pathe: 2.0.3
+    dev: true
+
+  /playwright-core@1.64.1:
+    resolution: {integrity: sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ==}
+    engines: {node: '>=20'}
+    hasBin: true
+    dev: true
+
+  /playwright@1.64.1:
+    resolution: {integrity: sha512-HCrVhHr5QQuwYoswEUGTb7gGp522yflbv/ST8nF4sFWGuLjQCt17Q/EubpGGSNKYn1tsTCPZxqHhHCfVURu7UA==}
+    engines: {node: '>=20'}
+    hasBin: true
+    dependencies:
+      playwright-core: 1.64.1
     dev: true
 
   /pngjs@5.0.0:
@@ -4637,7 +4681,7 @@ packages:
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
       isows: 1.0.7(ws@8.21.0)
-      ox: 0.14.45(typescript@5.9.3)
+      ox: 0.14.45(typescript@5.9.3)(zod@3.25.76)
       typescript: 5.9.3
       ws: 8.21.0
     transitivePeerDependencies:
@@ -4688,7 +4732,6 @@ packages:
       - bufferutil
       - utf-8-validate
       - zod
-    optional: true
 
   /vite@8.3.3(@types/node@22.20.5)(esbuild@0.28.2):
     resolution: {integrity: sha512-cTAldKPImjg6c+gk48U19POPn3GCBzZwpdsN8ZMEEcbpes+6/wvfqUd0C2y3qYY4wsj8PwgFwrZ/1jBPVttMSg==}
