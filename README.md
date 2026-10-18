@@ -4,7 +4,7 @@
 
 **The connect layer for serious dApps.** Open source and MIT-licensed, built on wagmi v3 + viem.
 
-[Website](https://wyllet.dev) · [Docs](https://wyllet.dev/docs) · [Playground](https://wyllet.dev/playground) · [X @wylletdev](https://x.com/wylletdev) · [support@wyllet.dev](mailto:support@wyllet.dev)
+[Website](https://wyllet.dev) · [Docs](https://wyllet.dev/docs) · [Playground](https://wyllet.dev/playground) · [Compatibility](COMPATIBILITY.md) · [Benchmarks](BENCHMARKS.md) · [X @wylletdev](https://x.com/wylletdev) · [support@wyllet.dev](mailto:support@wyllet.dev)
 
 ```bash
 pnpm add wyllet wagmi viem @tanstack/react-query
@@ -119,6 +119,31 @@ Every token is a CSS variable, such as `--wy-colors-accent` or `--wy-radii-panel
 Wyllet's own rules are unlayered, so a utility that sets a property Wyllet already sets (such as `font-family` on the button) needs Tailwind's `!` modifier, or a theme token instead.
 
 Slots: `overlay`, `panel`, `island`, `walletRow`, `primaryButton`, `identityCard`, `toast`.
+
+### Strict Content Security Policy
+
+Wyllet works under a CSP without `'unsafe-inline'`, in either of two ways.
+
+**With a nonce** (Next.js and most server-rendered apps): pass the response's nonce, and Wyllet adds it to the styles it injects.
+
+```tsx
+<WylletProvider nonce={nonce} />
+// Content-Security-Policy: style-src 'self' 'nonce-<nonce>'
+```
+
+**Without nonces** (static sites): load the stylesheet and a theme as files, and turn injection off.
+
+```tsx
+import 'wyllet/styles.css'
+import 'wyllet/themes/default.css' // or obsidian, porcelain, aurora, terminal
+
+<WylletProvider injectStyles={false} injectTheme={false} />
+// Content-Security-Policy: style-src 'self'
+```
+
+For a custom theme, generate its file with `themeStylesheet(myTheme)` at build time. Server-rendered markup never relies on inline `style` attributes, which a strict policy would block.
+
+Wyllet loads no scripts and no fonts of its own. The rest of your policy only needs what wallets use: `img-src` with `data:` and `https:` (wallet and chain icons, ENS avatars), and, with WalletConnect, `connect-src` for `https:` and `wss:` and `frame-src https://verify.walletconnect.org https://verify.walletconnect.com`. Both setups are tested in CI under a strict policy in Chrome, Firefox and Safari.
 
 ---
 
@@ -352,7 +377,9 @@ Every key is in the exported `en` object.
 | `wallets`, `appInfo` | Override what `getDefaultConfig` registered |
 | `messages`, `classNames`, `chainIcons`, `avatar`, `disclaimer` | Copy and visuals. The terms notice shows when `appInfo` has both `termsUrl` and `privacyUrl` |
 | `ens` | Resolve ENS names and avatars (default `true`; needs mainnet) |
-| `injectStyles` | `false` to load `wyllet/styles.css` yourself. The theme variables are still rendered in an inline `<style>`, so `style-src` needs `'unsafe-inline'` |
+| `injectStyles` | `false` to load `wyllet/styles.css` yourself |
+| `injectTheme` | `false` to load a `wyllet/themes/*.css` file (or `themeStylesheet()` output) yourself; `theme` and `colorMode` then have no effect |
+| `nonce` | CSP nonce added to the `<style>` elements Wyllet injects |
 | `onConnect` / `onDisconnect` | Lifecycle callbacks |
 
 ---
@@ -363,8 +390,10 @@ Every key is in the exported `en` object.
 pnpm install
 pnpm dev        # playground at http://localhost:5173 (hot-reloads library source)
 pnpm test       # vitest
-pnpm build      # packages/wyllet → dist (ESM + CJS + types + styles.css)
+pnpm build      # packages/wyllet → dist (ESM + CJS + types + styles.css + themes)
 pnpm typecheck
+pnpm test:e2e   # Playwright: Chrome, Firefox, Safari and phone profiles, strict CSP, scripted wallet
+pnpm bench      # bundle sizes (with budget) and loading timings, see BENCHMARKS.md
 ```
 
 Set `VITE_WC_PROJECT_ID` in `apps/playground/.env.local` to enable QR and mobile wallets. The burner wallet works with no setup.
