@@ -8,11 +8,12 @@
     "dev": "pnpm --filter playground dev",
     "test": "pnpm --filter wyllet test",
     "typecheck": "pnpm -r typecheck",
-    "test:e2e": "pnpm --filter e2e build && pnpm --filter e2e test"
+    "test:e2e": "pnpm --filter e2e build && pnpm --filter e2e test",
+    "bench": "pnpm --filter wyllet bench && pnpm --filter e2e build && pnpm --filter e2e bench"
   },
   "pnpm": {
     "overrides": {
-      "esbuild": "^0.28.1"
+      "esbuild": "0.28.2"
     }
   }
 }

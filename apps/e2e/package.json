@@ -6,6 +6,7 @@
     "build": "vite build",
     "serve": "node server.mjs",
     "test": "playwright test",
+    "bench": "playwright test --project=bench",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

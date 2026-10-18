@@ -1,0 +1,43 @@
+{
+  "version": "1.1.0",
+  "tools": {
+    "esbuild": "0.28.2",
+    "node": "22",
+    "gzip": "level 9",
+    "brotli": "quality 11"
+  },
+  "files": {
+    "dist/index.js": {
+      "raw": 276709,
+      "gzip": 82159,
+      "brotli": 67237
+    },
+    "dist/styles.css": {
+      "raw": 45457,
+      "gzip": 8864,
+      "brotli": 7742
+    },
+    "dist/themes/default.css": {
+      "raw": 2805,
+      "gzip": 828,
+      "brotli": 682
+    }
+  },
+  "imports": {
+    "Typical setup (WylletProvider, WylletButton, getDefaultConfig)": {
+      "raw": 192326,
+      "gzip": 68078,
+      "brotli": 57275
+    },
+    "Everything (export * from wyllet)": {
+      "raw": 200223,
+      "gzip": 71245,
+      "brotli": 59748
+    },
+    "Helpers only (getDefaultConfig, popularChains, customChain)": {
+      "raw": 78983,
+      "gzip": 34056,
+      "brotli": 28996
+    }
+  }
+}

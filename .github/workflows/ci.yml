@@ -23,6 +23,8 @@ jobs:
       - run: pnpm build
       # Runs after build so the dependency-policy test also scans the bundle.
       - run: pnpm test
+      # Fails if the published bundle grows past packages/wyllet/bench/budget.json.
+      - run: pnpm --filter wyllet bench
       - run: pnpm --filter playground build
 
   e2e:
@@ -40,9 +42,12 @@ jobs:
       - run: pnpm --filter e2e exec playwright install --with-deps chromium firefox webkit
       # Real browsers, strict CSP, a scripted wallet: connect, reject, reconnect, account and chain changes.
       - run: pnpm --filter e2e test
+      - run: pnpm --filter e2e bench
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-report
-          path: apps/e2e/playwright-report
+          path: |
+            apps/e2e/playwright-report
+            apps/e2e/bench-results
           retention-days: 14
