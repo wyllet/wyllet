@@ -1,0 +1,9 @@
+{
+  "note": "Gzip budgets in bytes, about 5% above the 1.2.0 sizes. Raise one only on purpose, in the same PR as the change that needs it.",
+  "gzip": {
+    "dist/index.js": 86016,
+    "dist/styles.css": 9728,
+    "Typical setup (WylletProvider, WylletButton, getDefaultConfig)": 71680,
+    "Everything (export * from wyllet)": 74752
+  }
+}

@@ -17,5 +17,6 @@ export default defineConfig({
     // Phones get the bottom sheet instead of the drawer, popover or modal.
     { name: 'mobile-chrome', use: { ...devices['Pixel 7'] }, testMatch: /(flows|csp)\.spec/ },
     { name: 'mobile-safari', use: { ...devices['iPhone 15'] }, testMatch: /(flows|csp)\.spec/ },
+    { name: 'bench', use: { ...devices['Desktop Chrome'] }, testMatch: /bench\.spec/, retries: 0 },
   ],
 })
