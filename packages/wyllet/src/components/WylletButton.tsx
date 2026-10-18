@@ -113,7 +113,7 @@ function IslandButton({ label, size = 'md', display = 'full', className }: Wylle
         className={cx(base, 'wy-island-cta')}
         onClick={() => state.openConnect(ref.current)}
         disabled={!mounted}
-        style={mounted ? undefined : { visibility: 'hidden' }}
+        data-wy-pending={mounted ? undefined : ''}
       >
         <span className="wy-island-cta-icon">{busy ? <Spinner size={15} /> : <WalletGlyph size={15} />}</span>
         <span>{busy ? t.connecting : (label ?? t.connect)}</span>
